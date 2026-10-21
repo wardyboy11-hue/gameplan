@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Game Plan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060A12">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Game Plan">
+<style>
+html,body{margin:0;height:100%;background:#060A12}
+iframe{border:0;width:100%;height:100%;display:block}
+#off{display:none;font-family:Verdana,Arial,sans-serif;color:#060A12;padding:24px}
+</style>
+</head>
+<body>
+<!-- Replace the address below with your Apps Script web app URL (ends in /exec) -->
+<iframe id="app" title="Game Plan" src="https://script.google.com/macros/s/AKfycbzP1PB48zdAabVhK8EHmaODCs5SYS44pOSlzQJ9-mtugQ3cyjgCJnOUnGXmAauiScDD/exec" allow="clipboard-write; camera; microphone"></iframe>
+<div id="off">No signal. Game Plan needs the internet. Try again when you are back online.</div>
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
+window.addEventListener('offline',function(){document.getElementById('app').style.display='none';document.getElementById('off').style.display='block';});
+window.addEventListener('online',function(){location.reload();});
+</script>
+</body>
+</html>
