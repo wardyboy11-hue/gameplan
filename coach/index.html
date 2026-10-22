@@ -196,6 +196,7 @@ function schedSync(){clearTimeout(syncTimer);syncTimer=setTimeout(function(){syn
 function docFor(key){var p=key.split(':'),o=p[0]==='player'?S.players[p[1]]:p[0]==='match'?S.matches[p[1]]:p[0]==='idea'?S.ideas[p[1]]:S.settings;return o?{kind:p[0],id:p[1],updatedAt:o.updatedAt,json:JSON.stringify(o)}:null;}
 function sync(manual){
  if(!CODE||syncing)return Promise.resolve();
+ if(API.indexOf('https://script.google.com/macros/s/AKfycby3YUAg5QncW-hb2tKDapu108F2RDlgEhFmluVsXPctKdlLP33ADPbVcJ8kEJSLmoij/exec')>-1){return Promise.resolve();}
  syncing=true;paintStatus();
  var keys=Object.keys(S.dirty),stamps={};
  var docs=keys.map(function(k){var d=docFor(k);if(d)stamps[k]=d.updatedAt;return d;}).filter(Boolean);
@@ -351,6 +352,7 @@ function vStats(){
 function vMore(){
  var s=S.settings;
  var h='<h2 style="margin:6px 0">More</h2><div class="card"><h3>Match settings</h3><div class="row"><div class="grow"><label style="margin-top:0">Half length (minutes)</label><input type="number" min="10" max="45" data-set="half" value="'+esc(s.half)+'"></div><div class="grow"><label style="margin-top:0">Sub check every (minutes)</label><input type="number" min="5" max="45" data-set="subEvery" value="'+esc(s.subEvery)+'"></div></div></div>';
+h+='<div class="card"><h3>Coaches</h3><div class="row" style="align-items:center"><img src="deano.jpg" alt="Deano" style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin-right:12px"><div><b>Deano</b><div class="small muted">Assistant coach, Wigan Junior Latics U15 Blues</div></div></div></div>';
  h+='<div class="card"><h3>Role cards</h3><p class="small muted">Starting wording. Change it to match your playing model.</p>'+POS.map(function(p){return '<label>'+p+'</label><textarea data-role="'+p+'" style="min-height:70px">'+esc(role(p))+'</textarea>';}).join('')+'</div>';
  h+=voteCard('poty','Player of the year vote','season','this season');
  h+=vCodes();
