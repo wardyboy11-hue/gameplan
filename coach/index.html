@@ -303,11 +303,26 @@ function evText(m,e){var n=function(id){return id&&P(id)?esc(shortName(P(id))):'
  case 'note':return 'Note'+(e.pid?' ('+n(e.pid)+')':'')+': '+esc(e.text||'');}
  return e.type;}
 
+
+function vt(){var v=S.settings.vote||(S.settings.vote={motm:{open:false},poty:{open:false}});if(!v.motm)v.motm={open:false};if(!v.poty)v.poty={open:false};return v;}
+function tally(kind,key){var c={};(view.votes||[]).forEach(function(v){if(v.kind===kind&&v.key===key)c[v.cand]=(c[v.cand]||0)+1;});return Object.keys(c).map(function(id){return {id:id,n:c[id]};}).sort(function(a,b){return b.n-a.n;});}
+function tallyHTML(kind,key){var t=tally(kind,kind==='poty'?(vt().poty.season||''):key);if(!view.votes)return '<p class="small muted">Tap Load votes to see the count. Coaches only.</p>';if(!t.length)return '<p class="small muted">No votes yet.</p>';return '<table>'+t.map(function(x){return '<tr><td>'+esc(P(x.id)?shortName(P(x.id)):x.id)+'</td><td>'+x.n+'</td></tr>';}).join('')+'</table>';}
+function voteCard(kind,title,key,label){var v=vt()[kind],open=v.open&&(kind==='poty'||v.matchId===key);
+ return '<div class="card"><h3>'+title+'</h3><p class="small muted">Families see a holding message until you open it. Right now it is '+(open?'<b>OPEN</b>':'closed')+'.</p><div class="row wrap2"><button class="btn '+(open?'bad':'pri')+' grow" data-act="voteToggle" data-k="'+kind+'" data-key="'+esc(key)+'" data-label="'+esc(label)+'">'+(open?'Close voting':'Open voting')+'</button><button class="btn grow" data-act="loadVotes">Load votes</button></div>'+tallyHTML(kind,key)+'</div>';}
+function summaryText(m){var sc=score(m),us=m.ha==='H'?sc[0]:sc[1],them=m.ha==='H'?sc[1]:sc[0];
+ var res=us>them?'WIN':us<them?'DEFEAT':'DRAW';var g={},a={};m.events.forEach(function(e){if(e.type==='goal'){if(e.pid&&P(e.pid))g[e.pid]=(g[e.pid]||0)+1;if(e.aid&&P(e.aid))a[e.aid]=(a[e.aid]||0)+1;}});
+ var gs=Object.keys(g).map(function(id){return shortName(P(id))+(g[id]>1?' ('+g[id]+')':'');}),as=Object.keys(a).map(function(id){return shortName(P(id))+(a[id]>1?' ('+a[id]+')':'');});
+ var t='Full time: Wigan Junior Latics U15 Blues '+us+' '+them+' '+(m.opp||'opposition')+' ('+res+')\n'+niceDate(m.date)+', '+(m.comp||'League')+'\n';
+ if(gs.length)t+='\nGoals: '+gs.join(', ');if(as.length)t+='\nAssists: '+as.join(', ');
+ t+='\n\nThanks to everyone who came and supported. Well done lads.';
+ if(m.notes)t+='\n\nFrom the touchline: '+m.notes;
+ t+='\n\nMan of the match voting opens in the team app soon.\nTim and Deano';return t;}
 function vDone(m){
  var sc=score(m),t=msec(m),played=plist(true).filter(function(p){return m.stints[p.id]&&m.stints[p.id].length;});
  var h='<div class="row" style="margin:6px 0"><button class="btn sm" data-act="back">Back</button><h2 class="grow" style="margin:0;text-align:center">Full time</h2><span></span></div>';
  h+='<div class="card" style="text-align:center"><div class="small muted">'+niceDate(m.date)+' · '+esc(m.comp)+'</div><div style="font-size:30px;font-weight:800;margin:6px 0">Latics '+(m.ha==='H'?sc[0]+' to '+sc[1]:sc[1]+' to '+sc[0])+' '+esc(m.opp)+'</div></div>';
  h+='<div class="card"><h3>Players</h3><table><tr><th>Player</th><th>Min</th><th>G</th><th>A</th><th>Rating</th></tr>'+played.map(function(p){var g=m.events.filter(function(e){return e.type==='goal'&&e.pid===p.id;}).length,a=m.events.filter(function(e){return e.type==='goal'&&e.aid===p.id;}).length;return '<tr><td>'+esc(p.num||'')+' '+esc(shortName(p))+'</td><td>'+Math.round(mins(m,p.id,t)/60)+'</td><td>'+(g||'')+'</td><td>'+(a||'')+'</td><td><select data-rate="'+p.id+'" style="min-height:36px;width:64px;padding:4px"><option value="">-</option>'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return '<option'+(m.ratings[p.id]==n?' selected':'')+'>'+n+'</option>';}).join('')+'</select></td></tr>';}).join('')+'</table><p class="small muted">Ratings are for coaches only.</p></div>';
+ h+='<div class="card"><h3>Match summary for WhatsApp</h3><textarea id="sumTxt" style="min-height:190px">'+esc(summaryText(m))+'</textarea><button class="btn pri block" style="margin-top:8px" data-act="copySummary">Copy for WhatsApp</button><p class="small muted">Edit it first if you like. Goals and assists come from the match log.</p></div>'+voteCard('motm','Man of the match vote',m.id,'v '+(m.opp||'opposition')+', '+niceDate(m.date));
  h+='<div class="card"><h3>Match notes</h3><textarea data-f="notes" placeholder="What worked, what to carry into Wednesday">'+esc(m.notes)+'</textarea></div>';
  h+='<div class="card"><h3>Match log</h3>'+m.events.map(function(e){return '<div class="ev"><span class="tm">'+Math.floor(e.t/60)+"'"+'</span><span>'+evText(m,e)+'</span></div>';}).join('')+'</div>';
  h+='<button class="btn bad block" data-act="delMatch">Delete this match</button>';
@@ -337,6 +352,7 @@ function vMore(){
  var s=S.settings;
  var h='<h2 style="margin:6px 0">More</h2><div class="card"><h3>Match settings</h3><div class="row"><div class="grow"><label style="margin-top:0">Half length (minutes)</label><input type="number" min="10" max="45" data-set="half" value="'+esc(s.half)+'"></div><div class="grow"><label style="margin-top:0">Sub check every (minutes)</label><input type="number" min="5" max="45" data-set="subEvery" value="'+esc(s.subEvery)+'"></div></div></div>';
  h+='<div class="card"><h3>Role cards</h3><p class="small muted">Starting wording. Change it to match your playing model.</p>'+POS.map(function(p){return '<label>'+p+'</label><textarea data-role="'+p+'" style="min-height:70px">'+esc(role(p))+'</textarea>';}).join('')+'</div>';
+ h+=voteCard('poty','Player of the year vote','season','this season');
  h+=vCodes();
  h+=vHelp();
  h+='<div class="card"><h3>Data</h3><p class="small muted">Everything saves on this phone first, then syncs to your private sheet when there is signal. '+Object.keys(S.dirty).length+' item(s) waiting.</p><div class="row wrap2"><button class="btn grow" data-act="sync">Sync now</button><button class="btn bad grow" data-act="logout">Sign out</button></div></div>';
@@ -555,6 +571,9 @@ var ACT={
  suggest:function(){var m=cur();m.lineup=suggestXI(m);saveM(m);toast('Suggested from who is in, positions and minutes so far. Change anything.');render(true);},
  printXI:function(){var m=cur(),rows=slotsOf(m).map(function(s){var pid=m.lineup[s.k],p=pid&&P(pid);return '<tr><td>'+s.k+'</td><td>'+(p?esc((p.num||'')+' '+p.name):'')+'</td></tr>';}).join('');var b=benchOf(m).map(function(p){return esc((p.num||'')+' '+p.name);}).join(', ');
   printHTML('<h1>Team sheet: '+(m.ha==='A'?'at ':'v ')+esc(m.opp||'opponent')+'</h1><p>'+esc(niceDate(m.date))+', kick off '+esc(m.ko)+'. Formation '+esc(m.formation)+'</p><table><tr><th>Position</th><th>Player</th></tr>'+rows+'</table><p><b>Subs:</b> '+(b||'none')+'</p><p>For coaches only.</p>');},
+ voteToggle:function(d){var v=vt(),k=d.k,c=v[k];if(c.open){c.open=false;}else{c.open=true;c.label=d.label||'';if(k==='motm')c.matchId=d.key;else c.season=c.season||('s'+new Date().getFullYear());}touch('settings',S.settings);toast(c.open?'Voting is open to families':'Voting closed');render(true);},
+ loadVotes:function(){call('votes').then(function(d){view.votes=d.rows||[];render(true);}).catch(function(e){toast(e.message);});},
+ copySummary:function(){var el=$('#sumTxt');function done(){toast('Copied. Paste into WhatsApp.');}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(el.value).then(done,function(){el.select();document.execCommand('copy');done();});}else{el.select();document.execCommand('copy');done();}},
  famCodes:function(){call('fam.codes').then(function(d){view.codes=d.rows;render(true);}).catch(function(e){toast(e.message);});},
  showLog:function(){call('asklog').then(function(d){view.log=d.rows;render(true);}).catch(function(e){toast(e.message);});},
  copyCode:function(d){var c=view.codes[Number(d.i)];var t='Hi, it is Tim from Wigan Junior Latics U15 Blues. Your family code for the team page is '+c.code+'. Open https://game.cipher-training.co.uk/family and type it in. It shows the session for the week, lets you say if '+String(c.name).split(' ')[0]+' is in, and has an Ask box for football questions. Please keep the code to your family. Tim';if(navigator.clipboard)navigator.clipboard.writeText(t).then(function(){toast('Message copied. Paste it privately.');});},
