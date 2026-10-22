@@ -136,8 +136,8 @@ var ROLE_DEF={
 };
 
 /* ---------- state ---------- */
-function blank(){return {players:{},matches:{},settings:{id:'main',half:35,subEvery:17,roles:{},updatedAt:0},dirty:{},lastSync:0};}
-function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&s.players){if(!s.settings||!s.settings.id)s.settings=blank().settings;return s;}}catch(e){}return blank();}
+function blank(){return {ideas:{},players:{},matches:{},settings:{id:'main',half:35,subEvery:17,roles:{},updatedAt:0},dirty:{},lastSync:0};}
+function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&s.players){if(!s.ideas)s.ideas={};if(!s.settings||!s.settings.id)s.settings=blank().settings;return s;}}catch(e){}return blank();}
 function lsGet(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 var S=load(),CODE=lsGet(CKEY),syncing=false,online=true,lastMsg='',syncTimer=null;
@@ -193,17 +193,17 @@ function call(action,p){
  return fetch(API,{method:'POST',body:body,headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow'}).then(function(r){return r.json();}).then(function(j){if(!j.ok)throw new Error(j.error||'Failed');return j.data;});
 }
 function schedSync(){clearTimeout(syncTimer);syncTimer=setTimeout(function(){sync();},4000);}
-function docFor(key){var p=key.split(':'),o=p[0]==='player'?S.players[p[1]]:p[0]==='match'?S.matches[p[1]]:S.settings;return o?{kind:p[0],id:p[1],updatedAt:o.updatedAt,json:JSON.stringify(o)}:null;}
+function docFor(key){var p=key.split(':'),o=p[0]==='player'?S.players[p[1]]:p[0]==='match'?S.matches[p[1]]:p[0]==='idea'?S.ideas[p[1]]:S.settings;return o?{kind:p[0],id:p[1],updatedAt:o.updatedAt,json:JSON.stringify(o)}:null;}
 function sync(manual){
  if(!CODE||syncing)return Promise.resolve();
  syncing=true;paintStatus();
  var keys=Object.keys(S.dirty),stamps={};
  var docs=keys.map(function(k){var d=docFor(k);if(d)stamps[k]=d.updatedAt;return d;}).filter(Boolean);
  return call('sync',{docs:docs,since:S.lastSync}).then(function(d){
-  d.docs.forEach(function(r){var o;try{o=JSON.parse(r.json);}catch(e){return;}var key=r.kind+':'+r.id;var cur=r.kind==='player'?S.players[r.id]:r.kind==='match'?S.matches[r.id]:S.settings;
+  d.docs.forEach(function(r){var o;try{o=JSON.parse(r.json);}catch(e){return;}var key=r.kind+':'+r.id;var cur=r.kind==='player'?S.players[r.id]:r.kind==='match'?S.matches[r.id]:r.kind==='idea'?S.ideas[r.id]:S.settings;
    if(cur&&S.dirty[key]&&cur.updatedAt>=r.updatedAt)return;
    if(cur&&cur.updatedAt>=r.updatedAt)return;
-   if(r.kind==='player')S.players[r.id]=o;else if(r.kind==='match')S.matches[r.id]=o;else S.settings=o;});
+   if(r.kind==='player')S.players[r.id]=o;else if(r.kind==='match')S.matches[r.id]=o;else if(r.kind==='idea')S.ideas[r.id]=o;else S.settings=o;});
   keys.forEach(function(k){var cur=docFor(k);if(!cur||cur.updatedAt===stamps[k])delete S.dirty[k];});
   S.lastSync=d.serverTime;online=true;lastMsg='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});persist();syncing=false;paintStatus();if(manual)toast('Synced');render(true);
  }).catch(function(e){syncing=false;if(/code/i.test(e.message)&&/work|wrong|not/i.test(e.message)){CODE='';lsSet(CKEY,'');lastMsg='';render();toast('That code did not work');return;}online=false;lastMsg='Saved on this phone';paintStatus();if(manual)toast('No signal. Saved on this phone.');});
@@ -378,6 +378,7 @@ function vSession(){
  h+='<div class="card"><h3>Focus (pick one or two)</h3><div class="chips">'+FOCUS.map(function(f){return '<button class="chip'+(p.focus.indexOf(f)>-1?' on':'')+'" data-act="pfocus" data-v="'+esc(f)+'">'+esc(f)+'</button>';}).join('')+'</div>';
  h+='<label>FA four corners (optional)</label><div class="chips">'+CORNERS.map(function(f){return '<button class="chip'+(p.corner.indexOf(f)>-1?' on':'')+'" data-act="pcorner" data-v="'+f+'">'+f+'</button>';}).join('')+'</div></div>';
  h+='<div class="card"><h3>Session details</h3><div class="row"><div class="grow"><label style="margin-top:0">Date</label><input type="date" data-plan="date" value="'+esc(p.date)+'"></div><div style="width:110px"><label style="margin-top:0">Players</label><input type="number" min="4" max="20" data-plan="num" value="'+esc(p.num)+'"></div></div><label>Area</label><input data-plan="pitch" value="'+esc(p.pitch)+'"><label>Equipment</label><textarea data-plan="equip" style="min-height:70px">'+esc(p.equip)+'</textarea><label>Anything else to help the plan or research</label><textarea data-plan="ctx" placeholder="For example: we keep losing the ball under pressure at the back, two players back from injury, Deano wants to lead the main practice, wet night so no big goal">'+esc(p.ctx)+'</textarea></div>';
+ h+=vIdeas();
  h+=vPost();
  h+=vFamNotes();
  h+=vBdays();
@@ -446,6 +447,32 @@ function vFamNotes(){var f=fam();
 function bdays(){var t=new Date(),out=[];plist().forEach(function(p){if(!p.dob)return;var q=p.dob.split('-'),n=new Date(t.getFullYear(),+q[1]-1,+q[2]);if(n<new Date(t.getFullYear(),t.getMonth(),t.getDate()))n=new Date(t.getFullYear()+1,+q[1]-1,+q[2]);var d=Math.round((n-new Date(t.getFullYear(),t.getMonth(),t.getDate()))/86400000);if(d<=21)out.push({p:p,d:d,age:n.getFullYear()-(+q[0])});});out.sort(function(a,b){return a.d-b.d;});return out;}
 function vBdays(){var b=bdays();if(!b.length)return '';return '<div class="card"><h3>Birthdays coming up</h3>'+b.map(function(x){return '<p class="small"><b>'+esc(shortName(x.p))+'</b> turns '+x.age+(x.d===0?' today':x.d===1?' tomorrow':' in '+x.d+' days')+'</p>';}).join('')+'<p class="small muted">Families see a happy birthday message when they open their page that day.</p></div>';}
 function vHelp(){return '<div class="card"><h3>How to use Touchline</h3><p class="small"><b>Match tab:</b> make a match, post it to families, pull in their answers, suggest a starting 11, then run the live match with the clock, subs and goals.</p><p class="small"><b>Squad tab:</b> tap a player to set positions, private notes, personal objectives for the family, FAN number and birthday.</p><p class="small"><b>Plan tab:</b> choose a focus, write the why, publish the session for families, then make the brief for Claude. Add game day tips and what we are working on.</p><p class="small"><b>Ask tab:</b> ask about a term, a drill or a set piece and get a diagram.</p><p class="small"><b>More tab:</b> family codes, questions families asked, role cards, sync and sign out.</p><p class="small muted">Everything saves on the phone first, then syncs when there is signal. Share the coach code only with Deano.</p></div>';}
+
+function who(){return lsGet('tl.who')||'';}
+function ideas(){return Object.keys(S.ideas||{}).map(function(k){return S.ideas[k];}).filter(function(i){return !i.deleted;}).sort(function(a,b){return (b.at||0)-(a.at||0);});}
+function vIdeas(){
+ var a=ideas(),pk=view.pick||(view.pick={}),n=Object.keys(pk).filter(function(k){return pk[k];}).length;
+ var h='<div class="card"><h3>Ideas board (you and Deano)</h3><p class="small muted">Drop in a drill, a link or a thought. Either of you can pick some and have them built into one session.</p><button class="btn pri block" data-act="ideaNew">Add an idea</button>';
+ if(a.length)h+='<div class="list" style="margin-top:10px">'+a.map(function(i){var on=pk[i.id];return '<div class="it"><button class="chip'+(on?' on':'')+'" data-act="ideaPick" data-id="'+i.id+'" style="margin-right:10px">'+(on?'Picked':'Pick')+'</button><div class="grow" data-act="ideaEdit" data-id="'+i.id+'"><b>'+esc(i.title)+'</b>'+(i.used?' <span class="tag good">Used</span>':'')+'<div class="small muted">'+esc(i.by||'')+(i.tags&&i.tags.length?' · '+esc(i.tags.join(', ')):'')+'</div>'+(i.notes?'<div class="small">'+esc(i.notes.slice(0,140))+'</div>':'')+(i.link?'<div class="small">'+esc(i.link.slice(0,60))+'</div>':'')+'</div></div>';}).join('')+'</div>';
+ else h+='<p class="small muted" style="margin-top:10px">Nothing here yet.</p>';
+ if(a.length)h+='<div class="row wrap2" style="margin-top:10px"><button class="btn pri grow" data-act="ideasBuild"'+(n?'':' disabled')+'>Build a session from '+(n||'the')+' picked</button></div>';
+ return h+'</div>';
+}
+function ideaSheet(id){
+ var o=id&&S.ideas[id]?S.ideas[id]:{id:'',title:'',link:'',notes:'',tags:[],by:who()};view.sheet={id:id||'',tags:(o.tags||[]).slice()};
+ openSheet('<h2>'+(id?'Idea':'New idea')+'</h2><label style="margin-top:0">What is it</label><input id="itit" value="'+esc(o.title)+'" placeholder="For example: 4v4+2 rondo with a press trigger"><label>Link (optional)</label><input id="ilink" inputmode="url" value="'+esc(o.link||'')+'" placeholder="Paste a YouTube, FA or website link"><label>Notes, rules, why you like it</label><textarea id="inotes">'+esc(o.notes||'')+'</textarea><label>Theme</label><div class="chips" id="itags"></div><label>Your name</label><input id="iby" value="'+esc(o.by||who())+'" placeholder="Tim or Deano"><div class="row" style="margin-top:14px"><button class="btn pri grow" data-act="ideaSave">Save</button><button class="btn grow" data-act="closeSheet">Cancel</button></div>'+(id?'<p style="margin-top:12px"><button class="btn sm bad" data-act="ideaDel">Delete</button></p>':''));
+ paintTags();
+}
+function paintTags(){var el=$('#itags');if(!el)return;var a=view.sheet.tags;el.innerHTML=FOCUS.map(function(f){return '<button class="chip'+(a.indexOf(f)>-1?' on':'')+'" data-act="ideaTag" data-v="'+esc(f)+'">'+esc(f)+'</button>';}).join('');}
+function ideasPrompt(){
+ var p=planDraft(),pk=ideas().filter(function(i){return view.pick&&view.pick[i.id];}),L=[];
+ L.push('Build ONE session for Wednesday '+niceDate(p.date)+', 19:00 to 20:00, from the ideas below. Combine them into the project format: arrival activity, practice one, practice two (main theme), the game, review. Keep the best of each idea, drop or adapt what does not fit 60 minutes and one third of a 4G pitch, and say what you dropped and why. Give Deano a named practice to lead. Credit who suggested each idea and name any outside source.');
+ L.push('Players expected: '+(p.num||'about 14')+'. Focus: '+(p.focus.join('; ')||'coach to suggest')+'.');
+ if(p.ctx&&p.ctx.trim())L.push('Coach context: '+p.ctx.trim());
+ L.push('');pk.forEach(function(i,n){L.push('Idea '+(n+1)+' from '+(i.by||'a coach')+': '+i.title+(i.link?' ('+i.link+')':'')+(i.notes?'. Notes: '+i.notes:'')+(i.tags&&i.tags.length?'. Theme: '+i.tags.join(', '):''));});
+ return L.join('\n');
+}
+
 function vCodes(){
  var h='<div class="card"><h3>Family codes</h3><p class="small muted">One code per family. It shows them only their own player\'s Yes, No or Maybe, the This week post, and Ask. Send each code privately, never in a group chat.</p><div class="row wrap2"><button class="btn grow" data-act="famCodes">Show family codes</button><button class="btn grow" data-act="showLog">Questions asked</button></div>';
  if(view.codes)h+='<div class="list" style="margin-top:10px">'+view.codes.map(function(c,i){return '<div class="it" data-act="copyCode" data-i="'+i+'"><div class="grow"><b>'+esc(c.num||'')+' '+esc(c.name)+'</b><div class="small muted">'+esc(c.code)+' (tap to copy the message)</div></div></div>';}).join('')+'</div>';
@@ -501,6 +528,14 @@ function noteSheet(m,type){
 function cur(){return view.mid?M(view.mid):null;}
 function saveM(m){touch('match',m);}
 var ACT={
+ ideaNew:function(){ideaSheet('');},
+ ideaEdit:function(d){ideaSheet(d.id);},
+ ideaTag:function(d){var a=view.sheet.tags,i=a.indexOf(d.v);if(i>-1)a.splice(i,1);else a.push(d.v);paintTags();},
+ ideaSave:function(){var t=$('#itit').value.trim();if(!t){toast('Say what it is');return;}var id=view.sheet.id,o=id&&S.ideas[id]?S.ideas[id]:{id:uid(),at:now()};o.title=t;o.link=$('#ilink').value.trim();o.notes=$('#inotes').value.trim().slice(0,1500);o.tags=view.sheet.tags.slice();o.by=$('#iby').value.trim();lsSet('tl.who',o.by);S.ideas[o.id]=o;touch('idea',o);closeSheet();render(true);},
+ ideaDel:function(){var o=S.ideas[view.sheet.id];if(o&&confirm('Delete this idea?')){o.deleted=true;touch('idea',o);}closeSheet();render(true);},
+ ideaPick:function(d){view.pick=view.pick||{};view.pick[d.id]=!view.pick[d.id];render(true);},
+ ideasBuild:function(){var txt=ideasPrompt();view.askq=txt;view.askA='';view.askBusy=true;view.tab='ask';render();window.scrollTo(0,0);var used=ideas().filter(function(i){return view.pick&&view.pick[i.id];});
+  call('ask',{q:txt,ctx:askCtx()}).then(function(d){view.askBusy=false;view.askA=d.text;used.forEach(function(i){i.used=true;touch('idea',i);});view.pick={};render(true);}).catch(function(e){view.askBusy=false;view.askA='Could not build it: '+e.message+'. Your picked ideas are still saved.';render(true);});},
  famSave:function(){touch('settings',S.settings);sync(true).then(function(){toast('Saved for families');});},
  ask:function(){var q=($('#askq')||{}).value||'';if(q.trim().length<3){toast('Type your question first');return;}view.askq=q;view.askBusy=true;render(true);call('ask',{q:q,ctx:askCtx()}).then(function(d){view.askBusy=false;view.askA=d.text;render(true);}).catch(function(e){view.askBusy=false;view.askA='Could not answer: '+e.message;render(true);});},
  askex:function(d){view.askq=ASKEX[Number(d.i)];render(true);},
@@ -530,7 +565,7 @@ var ACT={
  copyBrief:function(){var t=($('#briefTxt')||{}).value||view.brief||'';function done(){toast('Copied');}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){$('#briefTxt').select();document.execCommand('copy');done();});}else{$('#briefTxt').select();document.execCommand('copy');done();}},
 
  tab:function(d){view.tab=d.v;setMid(null);render();window.scrollTo(0,0);},
- login:function(){var v=$('#code').value.trim();if(!v)return;CODE=v;lsSet(CKEY,v);$('#lerr').textContent='Checking';S.lastSync=0;call('sync',{docs:[],since:0}).then(function(d){d.docs.forEach(function(r){try{var o=JSON.parse(r.json);if(r.kind==='player')S.players[r.id]=o;else if(r.kind==='match')S.matches[r.id]=o;else S.settings=o;}catch(e){}});S.lastSync=d.serverTime;persist();render();}).catch(function(e){CODE='';lsSet(CKEY,'');var el=$('#lerr');if(el)el.textContent=/Failed to fetch|NetworkError/i.test(e.message)?'No signal. Try again.':e.message;});},
+ login:function(){var v=$('#code').value.trim();if(!v)return;CODE=v;lsSet(CKEY,v);$('#lerr').textContent='Checking';S.lastSync=0;call('sync',{docs:[],since:0}).then(function(d){d.docs.forEach(function(r){try{var o=JSON.parse(r.json);if(r.kind==='player')S.players[r.id]=o;else if(r.kind==='match')S.matches[r.id]=o;else if(r.kind==='idea')S.ideas[r.id]=o;else S.settings=o;}catch(e){}});S.lastSync=d.serverTime;persist();render();}).catch(function(e){CODE='';lsSet(CKEY,'');var el=$('#lerr');if(el)el.textContent=/Failed to fetch|NetworkError/i.test(e.message)?'No signal. Try again.':e.message;});},
  logout:function(){if(Object.keys(S.dirty).length&&!confirm('Some changes have not synced yet. Sign out anyway?'))return;CODE='';lsSet(CKEY,'');S=blank();persist();render();},
  sync:function(){sync(true);},
  newMatch:function(){var m=newMatch();S.matches[m.id]=m;touch('match',m);setMid(m.id);render();window.scrollTo(0,0);},
