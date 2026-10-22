@@ -102,6 +102,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;t
 #splash p{color:#F4F6FC;font-weight:700;font-size:17px;text-align:center;max-width:300px;margin:18px 20px 0;line-height:1.35}
 #splash p b{color:#FFB81C}
 .av{width:34px;height:34px;min-width:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;background:#1d2a5a}.av.big{width:84px;height:84px;min-width:84px}.tagpp{background:#7a3b00;color:#ffd9a8}.ff{display:flex;gap:8px;flex-wrap:wrap}
+.intro{background:#0A173A;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13px;color:var(--muted)}.intro a{color:#9db8ff}.mth{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-top:6px;background:#050D24}
 </style>
 </head>
 <body>
@@ -242,7 +243,7 @@ function vMatches(){
  var live=ms.filter(function(m){return m.status==='live'||m.status==='ht';});
  var up=ms.filter(function(m){return m.status==='plan';}).sort(function(a,b){return a.date<b.date?-1:1;});
  var done=ms.filter(function(m){return m.status==='done';}).sort(function(a,b){return a.date<b.date?1:-1;});
- var h='<div class="row" style="margin:6px 0"><h2 class="grow" style="margin:0">Matches</h2><button class="btn" data-act="newResult">Add result</button><button class="btn pri" data-act="newMatch">New match</button></div>';
+ var h=intro('Plan matches, run them live with the clock and subs, and add results. Tap a match to open it.')+'<div class="row" style="margin:6px 0"><h2 class="grow" style="margin:0">Matches</h2><button class="btn" data-act="newResult">Add result</button><button class="btn pri" data-act="newMatch">New match</button></div>';
  function item(m){var sc=score(m);return '<div class="it" data-act="openMatch" data-id="'+m.id+'"><div class="grow"><b>'+(m.ha==='A'?'at ':'')+esc(m.opp||'Opponent TBC')+'</b><div class="small muted">'+niceDate(m.date)+' · '+esc(m.ko)+' · '+esc(m.comp)+'</div></div>'+(m.status==='plan'?(m.pp?'<span class="tag tagpp">Postponed</span>':'<span class="tag">'+FORMS[m.formation].n+'</span>'):'<b>'+(m.ha==='A'?sc[0]+' to '+sc[1]:sc[0]+' to '+sc[1])+'</b>')+'</div>';}
  if(live.length)h+='<div class="card"><h3>Live now</h3><div class="list">'+live.map(item).join('')+'</div></div>';
  h+='<div class="card"><h3>Coming up</h3><div class="list">'+(up.length?up.map(item).join(''):'<p class="muted">Nothing planned. Tap New match.</p>')+'</div></div>';
@@ -356,7 +357,7 @@ function vDone(m){
 
 function vSquad(){
  var all=plist(true);
- var h='<div class="row" style="margin:6px 0"><h2 class="grow" style="margin:0">Squad</h2><button class="btn pri" data-act="newPlayer">Add player</button></div><div class="card"><div class="list">';
+ var h=intro('Your squad with pictures. Tap a player to add a picture, positions, notes, objectives, FAN number and honours.')+'<div class="row" style="margin:6px 0"><h2 class="grow" style="margin:0">Squad</h2><button class="btn pri" data-act="newPlayer">Add player</button></div><div class="card"><div class="list">';
  h+=all.map(function(p){return '<div class="it" data-act="editPlayer" data-id="'+p.id+'" style="'+(p.active===false?'opacity:.5':'')+'">'+av(p)+'<div class="grow"><b>'+esc(p.num?p.num+'  ':'')+esc(p.name)+(p.cap?' ('+p.cap+')':'')+'</b><div class="small muted">'+((p.pos||[]).join(', ')||'No positions yet')+(p.active===false?' · archived':'')+'</div></div></div>';}).join('')||'<p class="muted">No players yet.</p>';
  return h+'</div></div>';
 }
@@ -370,12 +371,12 @@ function statsFor(){
 }
 function vStats(){
  var rows=statsFor().filter(function(r){return r.p.active!==false||r.app>0;}).sort(function(a,b){return b.mins-a.mins;});
- var h='<h2 style="margin:6px 0">Season</h2><div class="card"><table><tr><th>Player</th><th>App</th><th>Start</th><th>Min</th><th>G</th><th>A</th><th>Avg</th></tr>'+rows.map(function(r){var avg=r.r.length?(r.r.reduce(function(a,b){return a+b;},0)/r.r.length).toFixed(1):'';return '<tr><td>'+esc(r.p.num||'')+' '+esc(shortName(r.p))+'</td><td>'+r.app+'</td><td>'+r.start+'</td><td>'+Math.round(r.mins/60)+'</td><td>'+(r.g||'')+'</td><td>'+(r.a||'')+'</td><td>'+avg+'</td></tr>';}).join('')+'</table><p class="small muted">Minutes and ratings are for coaches. Nothing here is shared with players or parents yet.</p></div>';
+ var h=intro('Minutes, goals, assists and ratings. Coaches only. Never shown to families.')+'<h2 style="margin:6px 0">Season</h2><div class="card"><table><tr><th>Player</th><th>App</th><th>Start</th><th>Min</th><th>G</th><th>A</th><th>Avg</th></tr>'+rows.map(function(r){var avg=r.r.length?(r.r.reduce(function(a,b){return a+b;},0)/r.r.length).toFixed(1):'';return '<tr><td>'+esc(r.p.num||'')+' '+esc(shortName(r.p))+'</td><td>'+r.app+'</td><td>'+r.start+'</td><td>'+Math.round(r.mins/60)+'</td><td>'+(r.g||'')+'</td><td>'+(r.a||'')+'</td><td>'+avg+'</td></tr>';}).join('')+'</table><p class="small muted">Minutes and ratings are for coaches. Nothing here is shared with players or parents yet.</p></div>';
  return h;
 }
 function vMore(){
  var s=S.settings;
- var h='<h2 style="margin:6px 0">More</h2><div class="card"><h3>Match settings</h3><div class="row"><div class="grow"><label style="margin-top:0">Half length (minutes)</label><input type="number" min="10" max="45" data-set="half" value="'+esc(s.half)+'"></div><div class="grow"><label style="margin-top:0">Sub check every (minutes)</label><input type="number" min="5" max="45" data-set="subEvery" value="'+esc(s.subEvery)+'"></div></div></div>';
+ var h=intro('Settings, family codes, votes, role cards, sync and help.')+'<h2 style="margin:6px 0">More</h2><div class="card"><h3>Match settings</h3><div class="row"><div class="grow"><label style="margin-top:0">Half length (minutes)</label><input type="number" min="10" max="45" data-set="half" value="'+esc(s.half)+'"></div><div class="grow"><label style="margin-top:0">Sub check every (minutes)</label><input type="number" min="5" max="45" data-set="subEvery" value="'+esc(s.subEvery)+'"></div></div></div>';
 h+='<div class="card"><h3>Coaches</h3><div class="row" style="align-items:center"><img src="deano.jpg" alt="Deano" style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin-right:12px"><div><b>Deano</b><div class="small muted">Assistant coach, Wigan Junior Latics U15 Blues</div></div></div></div>';
  h+='<div class="card"><h3>Role cards</h3><p class="small muted">Starting wording. Change it to match your playing model.</p>'+POS.map(function(p){return '<label>'+p+'</label><textarea data-role="'+p+'" style="min-height:70px">'+esc(role(p))+'</textarea>';}).join('')+'</div>';
  h+=voteCard('poty','Player of the year vote','season','this season');
@@ -387,6 +388,7 @@ h+='<div class="card"><h3>Coaches</h3><div class="row" style="align-items:center
 
 
 
+function intro(t){return '<div class="intro">'+t+' <a href="#" data-act="tab" data-v="more">Help and FAQ</a></div>';}
 /* ---------- pictures ---------- */
 function av(p){var u=view.photos[p.id];return u?'<img class="av" src="'+u+'" alt="">':'<span class="num">'+esc(p.num||'')+'</span>';}
 function smallJpeg(file,cb){var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){var sz=Math.min(im.width,im.height),sx=(im.width-sz)/2,sy=(im.height-sz)/2,d=220,q=0.8,c=document.createElement('canvas');c.width=d;c.height=d;c.getContext('2d').drawImage(im,sx,sy,sz,sz,0,0,d,d);var u=c.toDataURL('image/jpeg',q);while(u.length>38000&&q>0.3){q-=0.1;u=c.toDataURL('image/jpeg',q);}cb(u);};im.src=fr.result;};fr.readAsDataURL(file);}
@@ -396,11 +398,15 @@ function coachPhotoBox(id,label){var u=view.photos[id];return '<div class="row" 
 
 /* ---------- hub ---------- */
 function calUrl(){return API+'?cal='+encodeURIComponent(CODE);}
-function loadHub(force){if(!CODE||API.indexOf('https://script.google.com/macros/s/AKfycby3YUAg5QncW-hb2tKDapu108F2RDlgEhFmluVsXPctKdlLP33ADPbVcJ8kEJSLmoij/exec')>-1)return;if(!force&&now()-view.hub.at<20000)return;view.hub.at=now();Promise.all([call('ev.list'),call('lift.list')]).then(function(r){view.hub.ev=r[0].rows||[];view.hub.lifts=r[1].rows||[];render(true);}).catch(function(e){view.hub.err=e.message;});}
+function loadHub(force){if(!CODE||API.indexOf('https://script.google.com/macros/s/AKfycby3YUAg5QncW-hb2tKDapu108F2RDlgEhFmluVsXPctKdlLP33ADPbVcJ8kEJSLmoij/exec')>-1)return;if(!force&&now()-view.hub.at<20000)return;view.hub.at=now();Promise.all([call('ev.list'),call('lift.list'),call('media.list')]).then(function(r){view.hub.ev=r[0].rows||[];view.hub.lifts=r[1].rows||[];view.hub.media=r[2].rows||[];render(true);fillCm();}).catch(function(e){view.hub.err=e.message;});}
+
+var cmc={};
+function fillCm(){var n=document.querySelectorAll('img[data-cm]');for(var i=0;i<n.length;i++){(function(el){var id=el.getAttribute('data-cm');if(cmc[id]){el.src=cmc[id];return;}call('media.get',{id:id}).then(function(d){cmc[id]=d.dataUrl;el.src=d.dataUrl;}).catch(function(){});})(n[i]);}}
+function mediaJpeg(file,cb){var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){var m=Math.max(im.width,im.height),sc=Math.min(1,640/m),q=0.7,c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);var u=c.toDataURL('image/jpeg',q);while(u.length>44000&&(q>0.25||sc>0.3)){if(q>0.3)q-=0.1;else{sc*=0.85;c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);}u=c.toDataURL('image/jpeg',q);}cb(u);};im.src=fr.result;};fr.readAsDataURL(file);}
 function news(){return S.settings.news||(S.settings.news=[]);}
 function vHub(){
  loadHub();loadPhotos();var h=view.hub,s=S.settings;
- var o='<h2 style="margin:6px 0">Hub</h2><p class="small muted">What families see on their home page, plus events, lifts and phone alerts.</p>';
+ var o=intro('Your control room: what families see on Home, events, lifts, media to approve, contacts, phone alerts and pictures.')+'<h2 style="margin:6px 0">Hub</h2><p class="small muted">What families see on their home page, plus events, lifts and phone alerts.</p>';
  o+='<div class="card"><h3>Welcome message</h3><textarea data-hub="welcome" placeholder="A short hello for the top of the family page">'+esc(s.welcome||'')+'</textarea><p class="small muted">Shows at the top of every family and player home page.</p>';
  o+='<h4 style="margin:14px 0 4px">News and reminders</h4>'+news().filter(function(n){return !n.gone;}).map(function(n){return '<div class="it" style="cursor:default"><div class="grow small">'+esc(n.t)+'<div class="muted">'+esc(n.d||'')+'</div></div><button class="btn sm bad" data-act="newsDel" data-id="'+n.id+'">Remove</button></div>';}).join('')+'<div class="row" style="margin-top:8px"><input id="newst" class="grow" placeholder="For example: Christmas do, Friday 18 December, 7pm"><input id="newsd" type="date" style="width:150px"></div><button class="btn block" style="margin-top:8px" data-act="newsAdd">Add to home page</button></div>';
  o+='<div class="card"><h3>Events</h3><p class="small muted">Anything that is not a game or training. Parents can add events too. They wait here for you to approve.</p>';
@@ -410,6 +416,11 @@ function vHub(){
  o+='<h4 style="margin:14px 0 4px">Add an event</h4><input id="evt" placeholder="Title"><div class="row"><div class="grow"><input id="evd" type="date"></div><div class="grow"><input id="evh" type="time"></div></div><input id="evp" placeholder="Place"><input id="evl" placeholder="Link (optional)"><textarea id="evn" style="min-height:60px" placeholder="Note (optional)"></textarea><button class="btn pri block" data-act="evAdd">Post event</button></div>';
  o+='<div class="card"><h3>Lifts</h3>'+(h.lifts.filter(function(l){return l.status==='open';}).length?h.lifts.filter(function(l){return l.status==='open';}).map(function(l){return '<div class="it" style="cursor:default"><div class="grow small"><b>'+esc(l.who)+'</b> '+(l.type==='offer'?'can give a lift':'needs a lift')+(l.seats&&l.type==='offer'?' ('+esc(l.seats)+' seats)':'')+'<div class="muted">'+esc(l.refTitle||l.ref)+' · '+esc(l.refDate)+'</div>'+(l.area?'<div>Area: '+esc(l.area)+'</div>':'')+(l.detail?'<div>'+esc(l.detail)+'</div>':'')+'</div><button class="btn sm" data-act="liftDone" data-id="'+l.id+'">Done</button></div>';}).join(''):'<p class="small muted">No open lift requests.</p>')+'<p class="small muted">Addresses and details are only shown here to coaches. Families only see a first name and a general area.</p></div>';
  o+='<div class="card"><h3>Phone alert</h3><p class="small muted">Goes to your phone and Deano\'s through Pushover. Urgent ones ring until you tap them, even on silent. See the how to guide to switch it on.</p><input id="alt" placeholder="Short message"><div class="row" style="margin-top:6px"><button class="btn grow" data-act="alertSend" data-l="quiet">Quiet</button><button class="btn grow" data-act="alertSend" data-l="normal">Normal</button><button class="btn bad grow" data-act="alertSend" data-l="urgent">Urgent</button></div></div>';
+
+ var mp=(h.media||[]).filter(function(m){return m.status==='pending';}),mpub=(h.media||[]).filter(function(m){return m.status==='published';});
+ o+='<div class="card"><h3>Media</h3><p class="small muted">Photos and links from parents and players wait here until you or Deano approve them. Check there are no names, faces without permission or anything unkind. '+mpub.length+' published.</p>'+(mp.length?mp.map(function(m){return '<div class="it" style="cursor:default;flex-wrap:wrap"><div class="grow small"><b>'+esc(m.title)+'</b> <span class="muted">from '+esc(m.who)+'</span>'+(m.kind==='link'?'<div><a href="'+esc(m.link)+'" target="_blank" rel="noopener">'+esc(m.link.slice(0,50))+'</a></div>':'<img class="mth" data-cm="'+m.id+'" alt="">')+'</div><button class="btn sm pri" data-act="mdSet" data-id="'+m.id+'" data-s="published">Approve</button><button class="btn sm bad" data-act="mdSet" data-id="'+m.id+'" data-s="removed">Remove</button></div>';}).join(''):'<p class="small muted">Nothing waiting.</p>')+'<h4 style="margin:14px 0 4px">Add one yourself (shows straight away)</h4><input id="mdt" placeholder="Title"><label class="btn block" style="margin-top:8px">Choose a picture<input type="file" accept="image/*" data-mup="1" style="display:none"></label><input id="mdl" placeholder="or a link https://" style="margin-top:8px"><button class="btn block" style="margin-top:8px" data-act="mdLink">Add link</button>'+(mpub.length?'<h4 style="margin:14px 0 4px">Published</h4>'+mpub.map(function(m){return '<div class="it" style="cursor:default"><div class="grow small">'+esc(m.title)+' <span class="muted">('+m.kind+', '+esc(m.who)+')</span></div><button class="btn sm bad" data-act="mdSet" data-id="'+m.id+'" data-s="removed">Remove</button></div>';}).join(''):'')+'</div>';
+ var cs=S.settings.contacts||[];
+ o+='<div class="card"><h3>Club contacts</h3><p class="small muted">Shown on the family Contacts page. Email opens their email app. FA, safeguarding and local FA details are already built in.</p>'+cs.map(function(c){return '<div class="it" style="cursor:default"><div class="grow small"><b>'+esc(c.n)+'</b> '+esc(c.r||'')+'<div class="muted">'+esc(c.e||'')+' '+esc(c.p||'')+'</div></div><button class="btn sm bad" data-act="ctDel" data-id="'+c.id+'">Remove</button></div>';}).join('')+'<input id="ctn" placeholder="Name" style="margin-top:8px"><input id="ctr" placeholder="Role, for example Club Welfare Officer" style="margin-top:8px"><input id="cte" placeholder="Email" style="margin-top:8px"><input id="ctp" placeholder="Phone (optional)" style="margin-top:8px"><button class="btn block" style="margin-top:8px" data-act="ctAdd">Add contact</button></div>';
  o+='<div class="card"><h3>Pictures</h3>'+coachPhotoBox('coach:tim','Tim')+coachPhotoBox('coach:deano','Deano')+'<p class="small muted">Players can add their own picture from their page. You can set any player\'s from the Squad tab.</p></div>';
  o+='<div class="card"><h3>Latics calendar</h3><p class="small muted">Games, training and events with reminders. Postponed or cancelled items show as cancelled. Each family has their own link on their page.</p><div class="row wrap2"><a class="btn grow" href="'+esc(calUrl().replace(/^https:/,'webcal:'))+'">Add to my calendar</a><button class="btn grow" data-act="copyCal">Copy link</button></div></div>';
  o+='<div class="card"><h3>Share to WhatsApp</h3><p class="small muted">Opens WhatsApp with the message ready. Pick the group and press send.</p><textarea id="wat" style="min-height:90px" placeholder="Type or paste a message"></textarea><button class="btn pri block" style="margin-top:8px" data-act="waSend">Share to WhatsApp</button></div>';
@@ -447,7 +458,7 @@ function buildBrief(){
 }
 function vSession(){
  var p=planDraft(),b=S.settings.briefs||[];
- var h='<h2 style="margin:6px 0">Plan a session</h2><p class="small muted">Pick what you want to work on, add anything that helps, then make the brief. Shirt numbers only, no names.</p>';
+ var h=intro('Pick a focus, add context, post the session to families and make the brief for Claude.')+'<h2 style="margin:6px 0">Plan a session</h2><p class="small muted">Pick what you want to work on, add anything that helps, then make the brief. Shirt numbers only, no names.</p>';
  h+='<div class="card"><h3>Focus (pick one or two)</h3><div class="chips">'+FOCUS.map(function(f){return '<button class="chip'+(p.focus.indexOf(f)>-1?' on':'')+'" data-act="pfocus" data-v="'+esc(f)+'">'+esc(f)+'</button>';}).join('')+'</div>';
  h+='<label>FA four corners (optional)</label><div class="chips">'+CORNERS.map(function(f){return '<button class="chip'+(p.corner.indexOf(f)>-1?' on':'')+'" data-act="pcorner" data-v="'+f+'">'+f+'</button>';}).join('')+'</div></div>';
  h+='<div class="card"><h3>Session details</h3><div class="row"><div class="grow"><label style="margin-top:0">Date</label><input type="date" data-plan="date" value="'+esc(p.date)+'"></div><div style="width:110px"><label style="margin-top:0">Players</label><input type="number" min="4" max="20" data-plan="num" value="'+esc(p.num)+'"></div></div><label>Area</label><input data-plan="pitch" value="'+esc(p.pitch)+'"><label>Equipment</label><textarea data-plan="equip" style="min-height:70px">'+esc(p.equip)+'</textarea><label>Anything else to help the plan or research</label><textarea data-plan="ctx" placeholder="For example: we keep losing the ball under pressure at the back, two players back from injury, Deano wants to lead the main practice, wet night so no big goal">'+esc(p.ctx)+'</textarea></div>';
@@ -695,6 +706,11 @@ var ACT={
   else if(e.type==='swap'){toast('Swap again to undo it');return;}
   m.events.pop();saveM(m);render(true);},
 
+
+ mdSet:function(d){call('media.set',{id:d.id,status:d.s}).then(function(){toast(d.s==='published'?'Approved':'Removed');loadHub(true);}).catch(function(e){toast(e.message);});},
+ mdLink:function(){call('media.save',{kind:'link',title:$('#mdt').value,link:$('#mdl').value,who:'Coaches'}).then(function(){toast('Added');loadHub(true);}).catch(function(e){toast(e.message);});},
+ ctAdd:function(){var n=$('#ctn').value.trim(),e=$('#cte').value.trim();if(!n||(!e&&!$('#ctp').value.trim())){toast('Add a name and an email or phone');return;}(S.settings.contacts=S.settings.contacts||[]).push({id:uid(),n:n.slice(0,60),r:$('#ctr').value.trim().slice(0,60),e:e.slice(0,80),p:$('#ctp').value.trim().slice(0,30)});touch('settings',S.settings);sync();render(true);toast('Added');},
+ ctDel:function(d){S.settings.contacts=(S.settings.contacts||[]).filter(function(c){return c.id!==d.id;});touch('settings',S.settings);render(true);},
  newsAdd:function(){var t=($('#newst')||{}).value||'';t=t.trim();if(t.length<3){toast('Type the reminder first');return;}news().unshift({id:uid(),t:t.slice(0,160),d:($('#newsd')||{}).value||''});touch('settings',S.settings);sync();render(true);toast('Added');},
  newsDel:function(d){news().forEach(function(n){if(n.id===d.id)n.gone=true;});S.settings.news=news().filter(function(n){return !n.gone;});touch('settings',S.settings);render(true);},
  evAdd:function(){var b={title:$('#evt').value,date:$('#evd').value,time:$('#evh').value,place:$('#evp').value,link:$('#evl').value,note:$('#evn').value};call('ev.save',b).then(function(){toast('Posted');loadHub(true);}).catch(function(e){toast(e.message);});},
@@ -727,6 +743,7 @@ document.addEventListener('change',function(e){var t=e.target,m=cur();
 });
 document.addEventListener('change',function(e){var t=e.target;
  if(t.dataset&&t.dataset.hub==='welcome'){S.settings.welcome=t.value.slice(0,400);touch('settings',S.settings);toast('Saved');}
+ else if(t.dataset&&t.dataset.mup&&t.files&&t.files[0]){var tt=($('#mdt')||{}).value||'';if(tt.trim().length<3){toast('Add a title first');t.value='';return;}mediaJpeg(t.files[0],function(u){call('media.save',{kind:'image',title:tt,dataUrl:u,who:'Coaches'}).then(function(){toast('Added');loadHub(true);}).catch(function(er){toast(er.message);});});}
  else if(t.dataset&&t.dataset.upl&&t.files&&t.files[0]){var id=t.dataset.upl;smallJpeg(t.files[0],function(u){call('photo.set',{playerId:id,dataUrl:u}).then(function(){view.photos[id]=u;try{localStorage.setItem('tl.photos',JSON.stringify(view.photos));}catch(x){}toast('Picture saved');render(true);if(view.sheet&&view.sheet.id===id)playerSheet(id);}).catch(function(er){toast(er.message);});});}
 });
 document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='code'){ACT.login();}});
