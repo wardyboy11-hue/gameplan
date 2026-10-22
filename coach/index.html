@@ -86,13 +86,18 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;t
 .login{text-align:center;padding-top:36px}.login img{height:110px}
 @media (prefers-reduced-motion:no-preference){.slot.sel .num{animation:pulse 1.4s ease-in-out infinite}}
 @keyframes pulse{50%{box-shadow:0 0 0 8px rgba(255,184,28,.15)}}
+.ans{background:#0A173A;border:1px solid var(--line);border-radius:12px;padding:12px;line-height:1.5;font-size:15px}
+.dg{width:100%;border-radius:12px;margin-top:10px;display:block}
+.bar{display:flex;gap:6px;margin:6px 0}.bar span{flex:1;text-align:center;border-radius:8px;padding:6px 4px;font-weight:700;font-size:13px}
+#pr{display:none}
+@media print{body>*:not(#pr){display:none!important}#pr{display:block!important;background:#fff;color:#000;padding:16px;font-family:Arial,sans-serif}#pr h1{font-size:22px}#pr table{border-collapse:collapse;width:100%}#pr td,#pr th{border:1px solid #999;padding:6px;text-align:left}}
 </style>
 </head>
 <body>
 <div class="stripe"></div>
 <div class="wrap" id="root"></div>
 <div class="sheet" id="sheet"><div class="sheetin" id="sheetin"></div></div>
-<div class="toast" id="toast"></div>
+<div id="pr"></div><div class="toast" id="toast"></div>
 <script>
 (function(){
 'use strict';
@@ -136,7 +141,7 @@ function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&s.players)
 function lsGet(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 var S=load(),CODE=lsGet(CKEY),syncing=false,online=true,lastMsg='',syncTimer=null;
-var view={tab:'match',mid:lsGet('tl.mid')||null,sheet:null,brief:null};
+var view={askq:'',askA:'',askBusy:false,answers:[],codes:null,log:null,tab:'match',mid:lsGet('tl.mid')||null,sheet:null,brief:null};
 if(view.mid&&!(S.matches[view.mid]&&!S.matches[view.mid].deleted))view.mid=null;
 function setMid(v){view.mid=v;lsSet('tl.mid',v||'');}
 var sel={off:null,on:null,mode:'sub'};
@@ -191,7 +196,6 @@ function schedSync(){clearTimeout(syncTimer);syncTimer=setTimeout(function(){syn
 function docFor(key){var p=key.split(':'),o=p[0]==='player'?S.players[p[1]]:p[0]==='match'?S.matches[p[1]]:S.settings;return o?{kind:p[0],id:p[1],updatedAt:o.updatedAt,json:JSON.stringify(o)}:null;}
 function sync(manual){
  if(!CODE||syncing)return Promise.resolve();
- 
  syncing=true;paintStatus();
  var keys=Object.keys(S.dirty),stamps={};
  var docs=keys.map(function(k){var d=docFor(k);if(d)stamps[k]=d.updatedAt;return d;}).filter(Boolean);
@@ -208,13 +212,13 @@ function paintStatus(){var el=$('#st');if(!el)return;var n=Object.keys(S.dirty).
 
 /* ---------- views ---------- */
 function header(){return '<header><img src="'+BADGE+'" alt=""><h1>Touchline</h1><span class="sp"></span><button class="pill" id="st" data-act="sync"></button></header>';}
-function tabs(){var T=[['match','Match'],['squad','Squad'],['plan','Plan'],['stats','Stats'],['more','More']];return '<nav class="tabs">'+T.map(function(t){return '<button class="'+(view.tab===t[0]&&!view.mid?'on':'')+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';}
+function tabs(){var T=[['match','Match'],['squad','Squad'],['plan','Plan'],['ask','Ask'],['stats','Stats'],['more','More']];return '<nav class="tabs">'+T.map(function(t){return '<button class="'+(view.tab===t[0]&&!view.mid?'on':'')+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';}
 function render(keepScroll){
  var r=$('#root'),y=window.scrollY;
  if(!CODE){r.innerHTML=vLogin();return;}
  var body;
  if(view.mid&&M(view.mid)){var m=M(view.mid);body=m.status==='plan'?vPlan(m):(m.status==='done'?vDone(m):vLive(m));}
- else body=view.tab==='squad'?vSquad():view.tab==='plan'?vSession():view.tab==='stats'?vStats():view.tab==='more'?vMore():vMatches();
+ else body=view.tab==='squad'?vSquad():view.tab==='plan'?vSession():view.tab==='ask'?vAsk():view.tab==='stats'?vStats():view.tab==='more'?vMore():vMatches();
  r.innerHTML=header()+body+tabs();paintStatus();if(keepScroll)window.scrollTo(0,y);
 }
 function vLogin(){return '<div class="login"><img src="'+BADGE+'" alt="Wigan Junior Latics"><h1 style="margin:14px 0 4px">Touchline</h1><p class="muted">Coaches only. Enter your code.</p><div class="card"><input id="code" type="password" autocomplete="off" placeholder="Coach code" style="text-align:center"><button class="btn pri block" style="margin-top:12px" data-act="login">Open</button><p class="small muted" id="lerr"></p></div></div>';}
@@ -256,7 +260,9 @@ function vPlan(m){
  if(mapLink)h+='<p><a class="btn sm pur" href="'+mapLink+'" target="_blank" rel="noopener">Open in Google Maps</a></p>';
  h+='<div class="row"><div class="grow"><label>Half length (minutes)</label><input type="number" min="10" max="45" data-f="half" value="'+esc(m.half)+'"></div><div class="grow">'+formSel(m)+'</div></div></div>';
  h+='<div class="card"><h3>Who is available ('+inCount+' of '+avail.length+')</h3><div class="chips">'+avail.map(function(p){var on=m.avail[p.id]!==false;return '<button class="chip'+(on?' on':'')+'" data-act="avail" data-id="'+p.id+'">'+esc(p.num||'')+' '+esc(shortName(p))+'</button>';}).join('')+'</div></div>';
- h+='<div class="card"><h3>Line up ('+filled+' of 11)</h3>'+pitchHTML(m,'plan',0)+'<p class="small muted">Tap a position to choose a player. The list puts the best fits first.</p></div>';
+ var mp=m.postId?posts().filter(function(x){return x.id===m.postId;})[0]:null;
+ h+='<div class="card"><h3>Ask the families</h3>'+(mp&&mp.status==='published'?'<p class="small" style="color:var(--good)">Posted. Families can answer now.</p><div class="row wrap2"><button class="btn grow" data-act="matchAns">Pull in answers</button><button class="btn grow" data-act="matchUnpost">Take it down</button></div>'+ansCard(m.postId):'<p class="small muted">Posts the date, kick off and place, with a Yes, No or Maybe button for each family.</p><button class="btn pri block" data-act="matchPost">Post this match to families</button>')+'</div>';
+ h+='<div class="card"><h3>Line up ('+filled+' of 11)</h3><div class="row wrap2" style="margin-bottom:10px"><button class="btn grow" data-act="suggest">Suggest a starting 11</button><button class="btn grow" data-act="printXI">Print team sheet</button></div>'+pitchHTML(m,'plan',0)+'<p class="small muted">Tap a position to choose a player. The list puts the best fits first.</p></div>';
  var bench=benchOf(m);
  h+='<div class="card"><h3>Subs ('+bench.length+')</h3><div class="chips">'+(bench.length?bench.map(function(p){return '<span class="chip">'+esc(p.num||'')+' '+esc(shortName(p))+'</span>';}).join(''):'<span class="muted small">None</span>')+'</div></div>';
  h+='<div class="card"><h3>Roles for '+FORMS[m.formation].n+'</h3>'+slotsOf(m).map(function(s){return '<p class="small"><b>'+s.k+'</b> '+esc(role(s.pos))+'</p>';}).join('')+'</div>';
@@ -331,6 +337,7 @@ function vMore(){
  var s=S.settings;
  var h='<h2 style="margin:6px 0">More</h2><div class="card"><h3>Match settings</h3><div class="row"><div class="grow"><label style="margin-top:0">Half length (minutes)</label><input type="number" min="10" max="45" data-set="half" value="'+esc(s.half)+'"></div><div class="grow"><label style="margin-top:0">Sub check every (minutes)</label><input type="number" min="5" max="45" data-set="subEvery" value="'+esc(s.subEvery)+'"></div></div></div>';
  h+='<div class="card"><h3>Role cards</h3><p class="small muted">Starting wording. Change it to match your playing model.</p>'+POS.map(function(p){return '<label>'+p+'</label><textarea data-role="'+p+'" style="min-height:70px">'+esc(role(p))+'</textarea>';}).join('')+'</div>';
+ h+=vCodes();
  h+='<div class="card"><h3>Data</h3><p class="small muted">Everything saves on this phone first, then syncs to your private sheet when there is signal. '+Object.keys(S.dirty).length+' item(s) waiting.</p><div class="row wrap2"><button class="btn grow" data-act="sync">Sync now</button><button class="btn bad grow" data-act="logout">Sign out</button></div></div>';
  return h;
 }
@@ -340,7 +347,7 @@ function vMore(){
 var FOCUS=['Build up and keeping the ball','Pressing and winning it back','Defending as a unit','Transitions','Finishing','Wide play and crossing','Set pieces','1v1 attacking and defending','First touch and receiving','Goalkeeping','Movement and fitness','Team spirit and mindset'];
 var CORNERS=['Technical','Tactical','Physical','Psychological','Social'];
 function nextWed(){var d=new Date();var add=(3-d.getDay()+7)%7;d.setDate(d.getDate()+add);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function planDraft(){var p=S.settings.plan;if(!p){p=S.settings.plan={focus:[],corner:[],date:nextWed(),num:String(plist().length||''),pitch:'One third of a 4G pitch, about 35 yards by the full width',equip:'10 size 5 balls, 10 size 4 balls, cones, mats, bibs in red, orange and yellow',ctx:''};}if(!p.date||p.date<isoToday())p.date=nextWed();if(!Array.isArray(p.corner))p.corner=[];return p;}
+function planDraft(){var p=S.settings.plan;if(!p){p=S.settings.plan={focus:[],corner:[],date:nextWed(),num:String(plist().length||''),pitch:'One third of a 4G pitch, about 35 yards by the full width',equip:'10 size 5 balls, 10 size 4 balls, cones, mats, bibs in red, orange and yellow',ctx:''};}if(!p.date||p.date<isoToday())p.date=nextWed();if(!p.post||p.post.forDate!==p.date)p.post={id:null,forDate:p.date,title:'',why:'',bring:'Boots, shin pads, a water bottle and a coat',time:'19:00',place:'',status:'draft'};if(!Array.isArray(p.corner))p.corner=[];return p;}
 function lastDone(){var a=Object.keys(S.matches).map(function(k){return S.matches[k];}).filter(function(m){return m.status==='done'&&!m.deleted;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});return a[0];}
 function buildBrief(){
  var p=planDraft(),L=[];
@@ -370,11 +377,85 @@ function vSession(){
  h+='<div class="card"><h3>Focus (pick one or two)</h3><div class="chips">'+FOCUS.map(function(f){return '<button class="chip'+(p.focus.indexOf(f)>-1?' on':'')+'" data-act="pfocus" data-v="'+esc(f)+'">'+esc(f)+'</button>';}).join('')+'</div>';
  h+='<label>FA four corners (optional)</label><div class="chips">'+CORNERS.map(function(f){return '<button class="chip'+(p.corner.indexOf(f)>-1?' on':'')+'" data-act="pcorner" data-v="'+f+'">'+f+'</button>';}).join('')+'</div></div>';
  h+='<div class="card"><h3>Session details</h3><div class="row"><div class="grow"><label style="margin-top:0">Date</label><input type="date" data-plan="date" value="'+esc(p.date)+'"></div><div style="width:110px"><label style="margin-top:0">Players</label><input type="number" min="4" max="20" data-plan="num" value="'+esc(p.num)+'"></div></div><label>Area</label><input data-plan="pitch" value="'+esc(p.pitch)+'"><label>Equipment</label><textarea data-plan="equip" style="min-height:70px">'+esc(p.equip)+'</textarea><label>Anything else to help the plan or research</label><textarea data-plan="ctx" placeholder="For example: we keep losing the ball under pressure at the back, two players back from injury, Deano wants to lead the main practice, wet night so no big goal">'+esc(p.ctx)+'</textarea></div>';
+ h+=vPost();
  h+='<div class="row"><button class="btn pri grow" data-act="makeBrief">Make the brief</button></div>';
  if(view.brief)h+='<div class="card"><h3>Your brief</h3><textarea id="briefTxt" style="min-height:260px">'+esc(view.brief)+'</textarea><div class="row wrap2" style="margin-top:10px"><button class="btn grow" data-act="copyBrief">Copy</button><a class="btn grow" id="briefClaude" href="'+('https://claude.ai/new?q='+encodeURIComponent(view.brief.slice(0,5000)))+'" target="_blank" rel="noopener">Open in Claude</a></div><p class="small muted">Paste it into the Wigan Junior Latics Blues project in Claude, or send it to the club knowledge agent once that is connected.</p></div>';
  if(b.length)h+='<div class="card"><h3>Earlier briefs</h3><div class="list">'+b.map(function(x,i){return '<div class="it" data-act="openBrief" data-i="'+i+'"><div class="grow"><b>'+esc(niceDate(x.date))+'</b><div class="small muted">'+esc((x.focus||[]).join(', ')||'No focus set')+'</div></div></div>';}).join('')+'</div></div>';
  return h;
 }
+
+
+/* ---------- families, answers, ask ---------- */
+function posts(){return S.settings.posts||(S.settings.posts=[]);}
+function ansFor(id){var o={};(view.answers||[]).forEach(function(r){if(r.postId===id)o[r.playerId]=r.answer;});return o;}
+function ansSum(id){var a=ansFor(id),r={Y:[],N:[],M:[],none:[]};plist().forEach(function(p){var x=a[p.id];(r[x]||r.none).push(p);});return r;}
+function ansCard(id){
+ if(!id)return '';var r=ansSum(id);
+ var names=function(a){return a.length?a.map(function(p){return esc(shortName(p));}).join(', '):'None';};
+ return '<div class="bar"><span style="background:#14532d">Yes '+r.Y.length+'</span><span style="background:#6b4a0a">Maybe '+r.M.length+'</span><span style="background:#7f1d33">No '+r.N.length+'</span><span style="background:#26407a">Waiting '+r.none.length+'</span></div><p class="small"><b>Yes:</b> '+names(r.Y)+'</p><p class="small"><b>Maybe:</b> '+names(r.M)+'</p><p class="small"><b>No:</b> '+names(r.N)+'</p><p class="small"><b>Not answered:</b> '+names(r.none)+'</p>';
+}
+function loadAnswers(quiet){return call('answers').then(function(d){view.answers=d.rows||[];if(!quiet)render(true);}).catch(function(){if(!quiet)toast('Could not load answers');});}
+function savePost(status){
+ var p=planDraft(),pd=p.post;if(!pd.id)pd.id=uid();var arr=posts(),o=arr.filter(function(x){return x.id===pd.id;})[0];if(!o){o={id:pd.id};arr.push(o);}
+ o.type='training';o.date=p.date;o.time=pd.time;o.place=pd.place;o.title=pd.title||('Training: '+(p.focus.join(', ')||'Wednesday session'));o.why=pd.why;o.bring=pd.bring;o.status=status;if(status==='published'&&!o.publishedAt)o.publishedAt=now();
+ pd.status=status;S.settings.posts=arr.filter(function(x){return x.date>=isoDaysAgo(60);});touch('settings',S.settings);return sync(true);
+}
+function isoDaysAgo(n){var d=new Date(Date.now()-n*86400000);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function vPost(){
+ var p=planDraft(),pd=p.post,pub=pd.status==='published';
+ var h='<div class="card"><h3>This week for families</h3><p class="small muted">Players and parents see this, plus a Yes, No or Maybe button. Never put names, scores or ability notes in it.</p>';
+ h+='<label>Headline</label><input data-plan="post.title" value="'+esc(pd.title)+'" placeholder="Training: pressing and winning it back">';
+ h+='<div class="row"><div class="grow"><label>Time</label><input data-plan="post.time" value="'+esc(pd.time)+'"></div><div class="grow"><label>Where</label><input data-plan="post.place" value="'+esc(pd.place)+'" placeholder="4G pitch"></div></div>';
+ h+='<label>Why we are doing it</label><textarea data-plan="post.why" placeholder="Two or three plain lines, for example: Saturday showed we lose the ball when a team presses us. This week we practise finding a free player quickly.">'+esc(pd.why)+'</textarea>';
+ h+='<label>What to bring</label><input data-plan="post.bring" value="'+esc(pd.bring)+'">';
+ h+='<div class="row wrap2" style="margin-top:12px"><button class="btn grow" data-act="draftWhy">Write the why for me</button></div>';
+ h+='<div class="row wrap2" style="margin-top:8px"><button class="btn grow" data-act="postSave">Save draft</button><button class="btn pri grow" data-act="postPub">'+(pub?'Update and publish':'Publish')+'</button></div>';
+ if(pub)h+='<p class="small" style="color:var(--good)">Published. Families can see it now.</p><div class="row wrap2"><button class="btn grow" data-act="postUnpub">Take it down</button><button class="btn grow" data-act="printPost">Print or PDF</button></div>';
+ h+='</div>';
+ if(pub){h+='<div class="card"><h3>Who is coming</h3><div class="row wrap2"><button class="btn grow" data-act="loadAns">Refresh answers</button><button class="btn grow" data-act="useYes">Use Yes count</button></div>'+ansCard(pd.id)+'</div>';}
+ return h;
+}
+function askCtx(){var p=planDraft();return 'Squad of '+plist().length+' players, one goalkeeper. '+(p.focus.length?'Current session focus: '+p.focus.join(', ')+'.':'');}
+var ASKEX=['What does playing in the half space mean?','Corner kick routines for U15s','A drill for pressing triggers','How do we stop losing the ball at the back?','Explain a 352 in plain words for the lads'];
+function diagSVG(d){
+ var o='<svg class="dg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5z" fill="#fff"/></marker></defs><rect width="100" height="70" fill="#1E6B3A"/><rect x="1" y="1" width="98" height="68" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width=".4"/>';
+ function pts(a){return Array.isArray(a)?a.filter(function(q){return Array.isArray(q)&&isFinite(q[0])&&isFinite(q[1]);}):[];}
+ pts(d.goals).forEach(function(q){o+='<rect x="'+(q[0]-3)+'" y="'+(q[1]-1)+'" width="6" height="2" fill="#fff"/>';});
+ pts(d.cones).forEach(function(q){o+='<path d="M'+q[0]+','+(q[1]-1.6)+' l1.4,2.8 h-2.8z" fill="#FF8A1F"/>';});
+ (Array.isArray(d.arrows)?d.arrows:[]).forEach(function(a){if(!Array.isArray(a)||a.length<4)return;var st=a[4]==='run'?' stroke-dasharray="2 1.5"':a[4]==='dribble'?' stroke-dasharray="0.6 1.2"':'';o+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+a[2]+'" y2="'+a[3]+'" stroke="#fff" stroke-width=".7"'+st+' marker-end="url(#ah)"/>';});
+ pts(d.a).forEach(function(q){o+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.3" fill="#3C6BDD" stroke="#fff" stroke-width=".4"/>';});
+ pts(d.d).forEach(function(q){o+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.3" fill="#FFB81C" stroke="#222" stroke-width=".4"/>';});
+ pts(d.n).forEach(function(q){o+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="2.3" fill="#fff" stroke="#222" stroke-width=".4"/>';});
+ pts(d.ball).forEach(function(q){o+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="1.1" fill="#fff" stroke="#000" stroke-width=".3"/>';});
+ return o+'</svg><p class="small muted">Blue attackers, yellow defenders, white neutrals. Check the layout against the words.</p>';
+}
+function renderAns(t){var diag=null;t=String(t||'').replace(/```diagram\s*([\s\S]*?)```/,function(_,j){try{diag=JSON.parse(j);}catch(e){}return '';});
+ return '<div class="ans">'+esc(t.trim()).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')+'</div>'+(diag?diagSVG(diag):'');}
+function vAsk(){
+ var h='<h2 style="margin:6px 0">Ask the coach</h2><p class="small muted">Ask about a term, a practice, set pieces, or ask for a drill and a diagram. It uses the web and answers as a UEFA Pro head of coaching, in our terms.</p>';
+ h+='<div class="card"><textarea id="askq" placeholder="For example: what does playing in the half space mean, and give me a practice for it">'+esc(view.askq)+'</textarea><div class="row" style="margin-top:10px"><button class="btn pri grow" data-act="ask"'+(view.askBusy?' disabled':'')+'>'+(view.askBusy?'Thinking':'Ask')+'</button></div><div class="chips" style="margin-top:10px">'+ASKEX.map(function(x,i){return '<button class="chip" data-act="askex" data-i="'+i+'">'+esc(x)+'</button>';}).join('')+'</div></div>';
+ if(view.askA)h+='<div class="card">'+renderAns(view.askA)+'<div class="row wrap2" style="margin-top:10px"><button class="btn grow" data-act="copyAns">Copy</button></div></div>';
+ return h;
+}
+function vCodes(){
+ var h='<div class="card"><h3>Family codes</h3><p class="small muted">One code per family. It shows them only their own player\'s Yes, No or Maybe, the This week post, and Ask. Send each code privately, never in a group chat.</p><div class="row wrap2"><button class="btn grow" data-act="famCodes">Show family codes</button><button class="btn grow" data-act="showLog">Questions asked</button></div>';
+ if(view.codes)h+='<div class="list" style="margin-top:10px">'+view.codes.map(function(c,i){return '<div class="it" data-act="copyCode" data-i="'+i+'"><div class="grow"><b>'+esc(c.num||'')+' '+esc(c.name)+'</b><div class="small muted">'+esc(c.code)+' (tap to copy the message)</div></div></div>';}).join('')+'</div>';
+ if(view.log)h+='<div class="list" style="margin-top:10px">'+(view.log.length?view.log.map(function(r){return '<div class="it"><div class="grow"><div class="small muted">'+esc(r.who)+'</div>'+esc(r.q)+'</div></div>';}).join(''):'<p class="small muted">None yet</p>')+'</div>';
+ return h+'</div>';
+}
+function suggestXI(m){
+ var pool=availPlayers(m),st={};statsFor().forEach(function(r){st[r.p.id]=r;});
+ var slots=slotsOf(m).slice(),lineup={},used={};
+ slots.sort(function(a,b){return (a.pos==='GK'?0:1)-(b.pos==='GK'?0:1);});
+ function isGK(p){return (p.pos||[]).indexOf('GK')>-1;}
+ function pick(s,strict){var best=null,bs=-1e9;pool.forEach(function(p){if(used[p.id])return;
+  if(strict){if(s.pos==='GK'&&!isGK(p))return;if(s.pos!=='GK'&&isGK(p)&&(p.pos||[]).length===1)return;}
+  var r=st[p.id]||{start:0,mins:0},sc=fit(p,s.pos)*10-r.start*3-r.mins/600;if(sc>bs){bs=sc;best=p;}});return best;}
+ slots.forEach(function(s){var b=pick(s,true);if(b){lineup[s.k]=b.id;used[b.id]=true;}});
+ slots.forEach(function(s){if(lineup[s.k])return;var b=pick(s,false);if(b){lineup[s.k]=b.id;used[b.id]=true;}});
+ return lineup;
+}
+function printHTML(h){var el=document.getElementById('pr');el.innerHTML=h;window.print();}
 
 /* ---------- sheets ---------- */
 function openSheet(html){$('#sheetin').innerHTML=html;$('#sheet').classList.add('on');}
@@ -411,6 +492,27 @@ function noteSheet(m,type){
 function cur(){return view.mid?M(view.mid):null;}
 function saveM(m){touch('match',m);}
 var ACT={
+ ask:function(){var q=($('#askq')||{}).value||'';if(q.trim().length<3){toast('Type your question first');return;}view.askq=q;view.askBusy=true;render(true);call('ask',{q:q,ctx:askCtx()}).then(function(d){view.askBusy=false;view.askA=d.text;render(true);}).catch(function(e){view.askBusy=false;view.askA='Could not answer: '+e.message;render(true);});},
+ askex:function(d){view.askq=ASKEX[Number(d.i)];render(true);},
+ copyAns:function(){var t=view.askA||'';if(navigator.clipboard)navigator.clipboard.writeText(t).then(function(){toast('Copied');});},
+ draftWhy:function(){var p=planDraft();var q='Write two or three short plain lines for parents and players explaining why we are working on '+(p.focus.join(' and ')||'this theme')+' at training this week. No jargon, no names, no scores. Start with what we noticed, then what we will practise.';toast('Writing');call('ask',{q:q,ctx:askCtx()}).then(function(d){p.post.why=String(d.text).replace(/```[\s\S]*?```/g,'').trim().slice(0,600);touch('settings',S.settings);render(true);}).catch(function(e){toast('Could not write it');});},
+ postSave:function(){savePost('draft').then(function(){toast('Draft saved');render(true);});},
+ postPub:function(){var p=planDraft();if(!p.post.why||p.post.why.trim().length<10){toast('Add the why first');return;}savePost('published').then(function(){toast('Published');render(true);loadAnswers(true).then(function(){render(true);});});},
+ postUnpub:function(){savePost('draft').then(function(){toast('Taken down');render(true);});},
+ loadAns:function(){loadAnswers().then(function(){toast('Updated');});},
+ useYes:function(){var p=planDraft(),r=ansSum(p.post.id);p.num=String(r.Y.length+r.M.length);touch('settings',S.settings);toast('Session set for '+p.num+' players (Yes and Maybe)');render(true);},
+ printPost:function(){var p=planDraft(),pd=p.post;printHTML('<h1>'+esc(pd.title||'Training')+'</h1><p><b>'+esc(niceDate(p.date))+'</b> '+esc(pd.time)+' '+esc(pd.place)+'</p><h2>Why we are doing it</h2><p>'+esc(pd.why).replace(/\n/g,'<br>')+'</p><h2>Bring</h2><p>'+esc(pd.bring)+'</p><p>Wigan Junior Latics U15 Blues</p>');},
+ matchPost:function(){var m=cur();var id=m.postId||(m.postId=uid());var arr=posts(),o=arr.filter(function(x){return x.id===id;})[0];if(!o){o={id:id};arr.push(o);}
+  o.type='match';o.date=m.date;o.time=m.ko;o.place=m.addr||m.venue||(m.ha==='H'?'Home':'Away');o.title='Match '+(m.ha==='A'?'at ':'v ')+(m.opp||'opponent');o.why='';o.bring='Kit, shin pads, boots and a water bottle';o.status='published';o.publishedAt=now();
+  S.settings.posts=arr;touch('settings',S.settings);saveM(m);sync(true).then(function(){toast('Posted');render(true);});},
+ matchUnpost:function(){var m=cur(),o=posts().filter(function(x){return x.id===m.postId;})[0];if(o){o.status='draft';touch('settings',S.settings);}sync(true).then(function(){render(true);});},
+ matchAns:function(){var m=cur();loadAnswers(true).then(function(){var r=ansSum(m.postId);r.Y.forEach(function(p){m.avail[p.id]=true;});r.N.forEach(function(p){m.avail[p.id]=false;var k=slotOfPlayer(m,p.id);if(k)delete m.lineup[k];});saveM(m);toast('Yes '+r.Y.length+', No '+r.N.length+', Maybe '+r.M.length+', waiting '+r.none.length);render(true);});},
+ suggest:function(){var m=cur();m.lineup=suggestXI(m);saveM(m);toast('Suggested from who is in, positions and minutes so far. Change anything.');render(true);},
+ printXI:function(){var m=cur(),rows=slotsOf(m).map(function(s){var pid=m.lineup[s.k],p=pid&&P(pid);return '<tr><td>'+s.k+'</td><td>'+(p?esc((p.num||'')+' '+p.name):'')+'</td></tr>';}).join('');var b=benchOf(m).map(function(p){return esc((p.num||'')+' '+p.name);}).join(', ');
+  printHTML('<h1>Team sheet: '+(m.ha==='A'?'at ':'v ')+esc(m.opp||'opponent')+'</h1><p>'+esc(niceDate(m.date))+', kick off '+esc(m.ko)+'. Formation '+esc(m.formation)+'</p><table><tr><th>Position</th><th>Player</th></tr>'+rows+'</table><p><b>Subs:</b> '+(b||'none')+'</p><p>For coaches only.</p>');},
+ famCodes:function(){call('fam.codes').then(function(d){view.codes=d.rows;render(true);}).catch(function(e){toast(e.message);});},
+ showLog:function(){call('asklog').then(function(d){view.log=d.rows;render(true);}).catch(function(e){toast(e.message);});},
+ copyCode:function(d){var c=view.codes[Number(d.i)];var t='Hi, it is Tim from Wigan Junior Latics U15 Blues. Your family code for the team page is '+c.code+'. Open https://game.cipher-training.co.uk/family/ and type it in. It shows the session for the week, lets you say if '+String(c.name).split(' ')[0]+' is in, and has an Ask box for football questions. Please keep the code to your family. Tim';if(navigator.clipboard)navigator.clipboard.writeText(t).then(function(){toast('Message copied. Paste it privately.');});},
  pfocus:function(d){var p=planDraft(),i=p.focus.indexOf(d.v);if(i>-1)p.focus.splice(i,1);else p.focus.push(d.v);touch('settings',S.settings);render(true);},
  pcorner:function(d){var p=planDraft(),i=p.corner.indexOf(d.v);if(i>-1)p.corner.splice(i,1);else p.corner.push(d.v);touch('settings',S.settings);render(true);},
  makeBrief:function(){var p=planDraft();view.brief=buildBrief();var b=S.settings.briefs||[];b.unshift({at:now(),date:p.date,focus:p.focus.slice(),text:view.brief});S.settings.briefs=b.slice(0,8);touch('settings',S.settings);render(true);setTimeout(function(){var el=$('#briefTxt');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},50);},
@@ -467,7 +569,7 @@ document.addEventListener('change',function(e){var t=e.target,m=cur();
   if(t.dataset.f==='formation'){var keep={};slotsOf({formation:v}).forEach(function(s){if(m.lineup[s.k])keep[s.k]=m.lineup[s.k];});m.lineup=keep;}
   m[t.dataset.f]=v;saveM(m);if(t.dataset.f==='formation'||t.dataset.f==='ha'||t.dataset.f==='addr')render(true);}
  else if(t.dataset.rate&&m){m.ratings[t.dataset.rate]=t.value;saveM(m);}
- else if(t.dataset.plan){var pl=planDraft();pl[t.dataset.plan]=t.value;touch('settings',S.settings);}
+ else if(t.dataset.plan){var pl=planDraft(),kk=t.dataset.plan.split('.');if(kk.length===2)pl[kk[0]][kk[1]]=t.value;else pl[kk[0]]=t.value;touch('settings',S.settings);}
  else if(t.dataset.set){S.settings[t.dataset.set]=Math.max(5,Math.min(45,Number(t.value)||35));touch('settings',S.settings);}
  else if(t.dataset.role){S.settings.roles=S.settings.roles||{};S.settings.roles[t.dataset.role]=t.value;touch('settings',S.settings);}
 });
