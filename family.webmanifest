@@ -1,0 +1,32 @@
+{
+ "id": "/family.html",
+ "name": "Wigan Junior Latics Blues",
+ "short_name": "Blues",
+ "description": "Fixtures, lifts and news for Wigan Junior Latics U15 Blues families and players.",
+ "start_url": "/family.html",
+ "scope": "/family.html",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#06102B",
+ "theme_color": "#06102B",
+ "icons": [
+  {
+   "src": "coach/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "coach/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "coach/icon-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
