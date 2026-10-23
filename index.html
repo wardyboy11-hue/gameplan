@@ -200,6 +200,33 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;
   .hero::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);animation:scan 5s ease-in-out infinite}
   @keyframes scan{0%,60%{left:-80px}100%{left:110%}}
 }
+
+/* ===== v2 layout: bottom navigation, bigger tap targets, calmer Today ===== */
+body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+nav.sub{top:0;padding:6px 0;gap:6px;overflow-x:auto;scrollbar-width:none}
+nav.sub::-webkit-scrollbar{display:none}
+nav.sub .tab{min-height:44px;font-size:.82rem;padding:8px 16px;white-space:nowrap}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(6,10,18,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bnav button{font:inherit;background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:60px;padding:6px 2px;cursor:pointer;font-family:var(--display);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;border-top:2px solid transparent}
+.bnav button.on{color:var(--link);border-top-color:var(--accent);background:linear-gradient(180deg,rgba(34,211,238,.16),transparent)}
+.bnav button:focus-visible{outline:3px solid var(--link);outline-offset:-3px}
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:31;width:56px;height:56px;border-radius:50%;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font:inherit;font-size:2rem;line-height:1;font-weight:400;cursor:pointer;box-shadow:0 0 22px -2px var(--glow),0 6px 14px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:0 0 3px}
+.fab:active{transform:scale(.95)}
+#toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+.btn.small{min-height:44px;min-width:44px;font-size:.78rem;padding:8px 14px}
+.it input[type=checkbox]{width:30px;height:30px}
+.it{padding:12px 0}
+.ring{width:104px;min-height:104px}
+.ring .rn{font-size:.64rem;padding:0 20px}
+.ring .rn strong{font-size:1.4rem}
+.ringrow{gap:14px;flex-wrap:nowrap}
+.bars{flex:1 1 0;min-width:0}
+.bars .bt{flex-wrap:wrap;gap:2px 8px}
+.bars .bt span:first-child,.bt span:last-child{white-space:normal}
+.bt span:last-child{font-size:.7rem}
+.sub{font-size:.82rem}
+@media (max-width:400px){.chip{font-size:.72rem}}
+@media (prefers-reduced-motion:reduce){.fab:active{transform:none}}
 </style>
 </head>
 <body>
@@ -211,6 +238,14 @@ var TYPES=[['study','Study'],['homework','Homework'],['gym','Gym'],['football','
 var TASK={study:1,homework:1};
 var MODES=[['home','Home straight after school'],['gym','Gym, getting myself home'],['football','Football after school'],['lift','I need a lift'],['other','Something else']];
 var TABS=[['today','Today'],['ask','Ask'],['cards','Cards'],['week','Week'],['add','Add'],['scan','Scan'],['gym','Gym'],['explore','Explore'],['me','Me'],['future','Future'],['help','Help'],['more','More']];
+var GROUPS=[['today','Today',['today'],'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
+ ['week','Week',['week','add'],'M4 5h16v15H4zM4 9h16M8 3v4M16 3v4'],
+ ['learn','Learn',['ask','cards','scan','help'],'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM8 7h7M8 11h7'],
+ ['life','Life',['gym','explore','future'],'M12 3l3 7 7 .8-5.3 4.7 1.6 7.2L12 19l-6.3 3.7 1.6-7.2L2 10.8 9 10z'],
+ ['me','Me',['me','more','print'],'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0']];
+var SUBNAME={me:'Progress',more:'Settings',ask:'Ask',cards:'Cue cards',scan:'Scan',help:'Help',gym:'Gym',explore:'Explore',future:'Future',add:'Add',week:'Week'};
+var LASTV={};
+function grpOf(t){for(var i=0;i<GROUPS.length;i++){if(GROUPS[i][2].indexOf(t)>-1)return GROUPS[i];}return GROUPS[0];}
 var LOGO='https://game.cipher-training.co.uk/ring.png?v=2';
 var SUBJ=['Maths','English','Science','Geography','History','Photography','RE'];
 var DAYN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -312,11 +347,15 @@ function nextTest(){
 
 /* ---------- views ---------- */
 function vToday(){
-  var t=ST.today,h=(isRohan()&&(youEdit||(!getYou()&&!youLater))?vYouSetup():'')+nextTest()+(isRohan()?moodCard():'')+(isRohan()?progressCard():'')+catchUp()+afterSchoolCard()+(isRohan()?linksCard()+sparkCard():'');
+  var t=ST.today,setup='';
+  if(isRohan()){if(youEdit)setup=vYouSetup();else if(!getYou()&&!youLater)setup='<div class="card"><h2>Make it yours</h2><p class="muted" style="margin-bottom:10px">Two minutes, once. Your music, your interests, how you like to be spoken to. Stays on this phone.</p><div class="row"><button class="btn small" data-act="youedit">Do it now</button><button class="btn small quiet" data-act="youlater">Later</button></div></div>';}
+  var h=setup+nextTest();
+  var rest=(isRohan()?moodCard()+progressCard():'')+afterSchoolCard()+(isRohan()?linksCard()+sparkCard():'');
   var today=ST.items.filter(function(i){return i.date===t&&i.status!=='dropped';}).sort(function(a,b){return a.time<b.time?-1:1;});
   h+='<div class="card"><h2>Today, '+esc(nice(t))+'</h2>'+(today.length?today.map(itemRow).join(''):'<p class="muted">Nothing planned. Use Add if you want to put something in.</p>')+'</div>';
   var tom=ST.items.filter(function(i){return i.date===addDays(t,1)&&i.status!=='dropped';}).sort(function(a,b){return a.time<b.time?-1:1;});
   if(tom.length)h+='<div class="card"><h2>Tomorrow</h2>'+tom.map(itemRow).join('')+'</div>';
+  if(isRohan())h+=catchUp()+rest;
   if(!isRohan()){
     var ws=monday(t),we=addDays(ws,6);
     var wk=ST.items.filter(function(i){return TASK[i.type]&&i.date>=ws&&i.date<=we&&i.status!=='dropped';});
@@ -384,8 +423,8 @@ function progressCard(){
   function lab(v,max){return v>=max?'done':v>0?'getting there':'not yet';}
   function bar(name,v,max){var w=Math.min(100,Math.round(v*100/Math.max(1,max)));return '<div class="bar"><div class="bt"><span>'+name+'</span><span class="muted">'+lab(v,max)+'</span></div><div class="bk" role="img" aria-label="'+name+': '+lab(v,max)+'"><div class="bf" style="width:'+w+'%"></div></div></div>';}
   var ring=wk.length?'<div class="ring"><svg viewBox="0 0 100 100" width="112" height="112" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="var(--link)" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 50 50)"/></svg><div class="rn"><strong>'+pct+'%</strong><span class="muted">of this week\'s plan</span></div></div>':'<div class="ring"><div class="rn" style="position:static"><strong>Still learning your week</strong><span class="muted">Add a few sessions and this fills in.</span></div></div>';
-  return '<div class="card"><h2>Your week so far</h2><div class="ringrow">'+ring+'<div class="bars">'+bar('Sessions',dn,Math.max(1,wk.length))+bar('Subjects touched',n,4)+bar('Quizzes',qz,2)+'</div></div>'+
-    '<div class="dots" style="margin-top:12px">'+SUBJ.map(function(x){return '<span class="dot'+(set[x]?' on':'')+'">'+x+'</span>';}).join('')+'</div></div>';
+  return '<div class="card"><h2>Your week so far</h2><div class="ringrow">'+ring+'<div class="bars">'+bar('Sessions',dn,Math.max(1,wk.length))+bar('Subjects',n,4)+bar('Quizzes',qz,2)+'</div></div>'+
+    '<p class="sub" style="margin-top:12px">Subjects touched this week</p><div class="dots" style="margin-top:6px">'+SUBJ.map(function(x){return '<span class="dot'+(set[x]?' on':'')+'">'+x+'</span>';}).join('')+'</div></div>';
 }
 function linksCard(){
   var ids=['s_arbor','p_sparxm','p_seneca','p_sparxr'],R=ST.resources;
@@ -441,7 +480,7 @@ function vMe(){
   var tests=ST.tests.slice().sort(function(a,b){return a.date<b.date?1:-1;});
   var tgaps=tests.map(function(t){return Number(t.predicted)-pct(Number(t.got),Number(t.outof));});
   var pr=ST.practice,pgaps=pr.map(function(p){return pct(Number(p.predicted),Number(p.outof))-pct(Number(p.got),Number(p.outof));});
-  h+=coveredCard();
+  if(isRohan())h+=coveredCard();
   var MN=function(q){var m=MOODS.filter(function(x){return x[0]===q;})[0];return m?m[1]:q;};
   var ml=(ST.moods||[]).slice().sort(function(a,b){return a.createdAt<b.createdAt?1:-1;}).slice(0,8);
   if(isRohan()){
@@ -454,7 +493,7 @@ function vMe(){
   }else{
     h+='<div class="card"><h2>Check ins Rohan chose to share</h2>'+(ml.length?ml.slice(0,5).map(function(c){return '<p class="muted">'+esc(nice(c.date))+': '+esc(MN(c.quad))+(c.word?', '+esc(c.word):'')+(c.reason?', '+esc(c.reason):'')+'</p>';}).join(''):'<p class="muted">None shared yet. His check ins are private unless he shares them.</p>')+'</div>';
   }
-  h+='<div class="card"><h2>Predict, then check</h2><p class="muted" style="margin-bottom:12px">Before you get a mark back, guess it. Then record the real one. Over time you learn how well you know what you know.</p><form data-form="test">'+
+  if(isRohan())h+='<div class="card"><h2>Predict, then check</h2><p class="muted" style="margin-bottom:12px">Before you get a mark back, guess it. Then record the real one. Over time you learn how well you know what you know.</p><form data-form="test">'+
     '<label>Subject<select name="subject">'+SUBJ.map(function(x){return '<option>'+x+'</option>';}).join('')+'</select></label><label>Topic<input name="topic" maxlength="80"></label><label>Day<input type="date" name="date" value="'+ST.today+'" required></label>'+
     '<label>I guessed (percent)<input name="predicted" inputmode="numeric" maxlength="3" required></label><label>My marks<input name="got" inputmode="decimal" maxlength="5" required></label><label>Out of<input name="outof" inputmode="numeric" maxlength="3" required></label>'+
     '<label class="full">What will I do differently?<input name="lesson" maxlength="240"></label><div class="full"><button class="btn">Save</button></div></form></div>';
@@ -554,8 +593,8 @@ function vHelp(){
   var h='<div class="card"><h2>Help</h2><div class="row">'+['All'].concat(subs).map(function(x){var on=(x==='All'&&!helpSub)||x===helpSub;return '<button class="btn small'+(on?'':' ghost')+'" data-act="hsub" data-v="'+(x==='All'?'':x)+'">'+x+'</button>';}).join('')+'</div></div>';
   var pr=R.filter(function(r){return r.k==='practice'&&(!helpSub||r.s.indexOf(helpSub)>-1);});
   var sc=R.filter(function(r){return r.k==='school'&&(!helpSub||r.s.indexOf(helpSub)>-1||['s_revskills','s_y10','s_exams'].indexOf(r.id)>-1);});
-  h+='<div class="card"><h2>School support</h2>'+resList(sc)+'</div>';
-  h+='<div class="card"><h2>Practice and revision</h2>'+(pr.length?resList(pr):'<p class="muted">Nothing listed for this subject yet.</p>')+'</div>';
+  if(sc.length)h+='<div class="card"><h2>School support</h2>'+resList(sc)+'</div>';
+  h+=pr.length?'<div class="card"><h2>Practice and revision</h2>'+resList(pr)+'</div>':'<p class="muted" style="padding:0 4px">Nothing listed for this subject yet.</p>';
   var by=R.filter(function(r){return r.k==='beyond'&&r.id.indexOf('b_harrow')<0;});
   if(by.length&&!helpSub)h+='<div class="card"><h2>Beyond school</h2>'+resList(by)+'</div>';
   h+='<div class="card"><h2>Ways to revise that work</h2><p>Quiz yourself instead of rereading. Write down what you remember, then check it. Do short sessions on different days. Do past paper questions without your notes. Use the Full time questions after each session. Teaching a topic to mum or dad for five minutes is one of the best tests there is.</p></div>';
@@ -753,8 +792,11 @@ function render(){
   if(!ST){r.innerHTML=loading?'<div class="login card" style="text-align:center"><div class="spin"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="43" fill="none" stroke="#22D3EE" stroke-opacity=".45" stroke-width="1.2"/><circle class="tk" cx="60" cy="60" r="55" fill="none" stroke="#22D3EE" stroke-width="5" stroke-dasharray="2 3.45"/></svg><img class="mk" src="https://game.cipher-training.co.uk/mark.png" alt=""></div><p class="muted" role="status">Opening your plan</p></div>':vLogin();return;}
   var V={today:vToday,ask:vAsk,cards:vCards,week:vWeek,add:vAdd,scan:vScan,gym:vGym,explore:vExplore,me:vMe,future:vFuture,help:vHelp,print:vPrint,more:vMore};
   r.innerHTML='<header><div class="brand"><img class="logo" src="'+LOGO+'" alt="Cipher"><h1>Game Plan</h1></div><span class="chip'+(isRohan()?'':' fam')+'">'+(isRohan()?'Rohan':'Mum and dad')+'</span></header>'+
-    '<nav>'+TABS.map(function(t){return '<button class="tab'+(t[0]===tab?' on':'')+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>'+
-    '<main>'+V[tab]()+'</main><p class="made">made by Cipher</p>';
+    (function(){var g=grpOf(tab);LASTV[g[0]]=tab;var vs=g[2].filter(function(x){return x!=='print';});
+      return vs.length>1?'<nav class="sub" aria-label="'+g[1]+'">'+vs.map(function(v){return '<button class="tab'+(v===tab?' on':'')+'" data-act="tab" data-v="'+v+'"'+(v===tab?' aria-current="page"':'')+'>'+SUBNAME[v]+'</button>';}).join('')+'</nav>':'';})()+
+    '<main>'+V[tab]()+'</main><p class="made">made by Cipher</p>'+
+    (tab!=='add'?'<button class="fab" data-act="tab" data-v="add" aria-label="Add something">+</button>':'')+
+    '<div class="bnav" role="navigation" aria-label="Main">'+GROUPS.map(function(g){var on=grpOf(tab)[0]===g[0];var go=on?g[2][0]:(LASTV[g[0]]||g[2][0]);return '<button data-act="tab" data-v="'+go+'"'+(on?' class="on" aria-current="page"':'')+'><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+g[3]+'"/></svg><span>'+g[1]+'</span></button>';}).join('')+'</div>';
 }
 
 
