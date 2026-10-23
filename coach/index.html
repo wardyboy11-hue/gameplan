@@ -434,10 +434,69 @@ function loadHub(force){if(!CODE||API.indexOf('__'+'API__')>-1)return;if(!force&
 var cmc={};
 function fillCm(){var n=document.querySelectorAll('img[data-cm]');for(var i=0;i<n.length;i++){(function(el){var id=el.getAttribute('data-cm');if(cmc[id]){el.src=cmc[id];return;}call('media.get',{id:id}).then(function(d){cmc[id]=d.dataUrl;el.src=d.dataUrl;}).catch(function(){});})(n[i]);}}
 function mediaJpeg(file,cb){var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){var m=Math.max(im.width,im.height),sc=Math.min(1,640/m),q=0.7,c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);var u=c.toDataURL('image/jpeg',q);while(u.length>44000&&(q>0.25||sc>0.3)){if(q>0.3)q-=0.1;else{sc*=0.85;c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext('2d').drawImage(im,0,0,c.width,c.height);}u=c.toDataURL('image/jpeg',q);}cb(u);};im.src=fr.result;};fr.readAsDataURL(file);}
+
+/* ---------- weather, travel and advice ---------- */
+var WXG=(function(){try{return JSON.parse(localStorage.getItem('tl.geo'))||{};}catch(e){return {};}})(),WXF={},WXB={};
+function wxGeo(pc,cb){pc=String(pc||'').toUpperCase().replace(/\s+/g,' ').trim();if(!pc){cb(null);return;}if(WXG[pc]){cb(WXG[pc]);return;}
+ fetch('https://api.postcodes.io/postcodes/'+encodeURIComponent(pc)).then(function(r){return r.json();}).then(function(d){if(d&&d.result){WXG[pc]=[d.result.latitude,d.result.longitude];try{localStorage.setItem('tl.geo',JSON.stringify(WXG));}catch(e){}cb(WXG[pc]);}else cb(null);}).catch(function(){cb(null);});}
+function wxLoad(pc,rerender){var k=String(pc||'').toUpperCase().trim();if(!k||WXB[k]||(WXF[k]&&now()-WXF[k].at<1200000))return;WXB[k]=1;
+ wxGeo(k,function(g){if(!g){WXF[k]={at:now(),bad:1};WXB[k]=0;if(rerender)render(true);return;}
+  fetch('https://api.open-meteo.com/v1/forecast?latitude='+g[0]+'&longitude='+g[1]+'&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,weather_code&timezone=Europe%2FLondon&wind_speed_unit=mph&forecast_days=16')
+  .then(function(r){return r.json();}).then(function(d){WXF[k]={at:now(),h:d.hourly};WXB[k]=0;if(rerender)render(true);}).catch(function(){WXF[k]={at:now(),bad:1};WXB[k]=0;if(rerender)render(true);});});}
+function wxWin(pc,date,time,hrs){var f=WXF[String(pc||'').toUpperCase().trim()];if(!f)return 'wait';if(f.bad||!f.h)return 'bad';
+ var m=String(time||'09:00').match(/(\d{1,2}):(\d{2})/),h0=m?+m[1]:9,a={n:0,p:0,mm:0,w:0,g:0,tmin:99,tmax:-99,code:0};
+ for(var i=0;i<f.h.time.length;i++){var t=f.h.time[i];if(t.slice(0,10)!==date)continue;var hh=+t.slice(11,13);if(hh<h0||hh>h0+hrs-1+(m&&+m[2]>0?1:0))continue;
+  a.n++;a.p=Math.max(a.p,f.h.precipitation_probability[i]||0);a.mm+=f.h.precipitation[i]||0;a.w=Math.max(a.w,f.h.wind_speed_10m[i]||0);a.g=Math.max(a.g,f.h.wind_gusts_10m[i]||0);
+  a.tmin=Math.min(a.tmin,f.h.temperature_2m[i]);a.tmax=Math.max(a.tmax,f.h.temperature_2m[i]);a.code=Math.max(a.code,f.h.weather_code[i]||0);}
+ return a.n?a:'far';}
+function wxAdvice(a,grass){var hints=[],lvl=0;
+ var thunder=a.code>=95;
+ if(thunder){hints.push('Thunder in the forecast. If you hear it or see lightning, everyone off the pitch and into cars or a building.');lvl=Math.max(lvl,a.p>=50?2:1);}
+ if(a.g>=50){hints.push('Gusts of '+Math.round(a.g)+' mph. That is dangerous for kids and for crossbars and fences.');lvl=2;}
+ else if(a.g>=35){hints.push('Gusty, up to '+Math.round(a.g)+' mph. Keep the ball on the floor and expect a lot of restarts.');lvl=Math.max(lvl,1);}
+ else if(a.w>=20){hints.push('Breezy, around '+Math.round(a.w)+' mph. Pick which end to play towards.');}
+ if(a.mm>=8&&grass){hints.push('About '+Math.round(a.mm)+' mm of rain. A grass pitch could be unplayable or dangerous underfoot.');lvl=2;}
+ else if(a.mm>=3){hints.push('Wet, around '+a.mm.toFixed(1)+' mm. '+(grass?'Pitch will cut up. Studs, not blades.':'Surface will be slick, so bring dry kit for the journey home.'));lvl=Math.max(lvl,1);}
+ else if(a.p>=40){hints.push('Showers possible ('+a.p+'% chance). Waterproofs and spare socks.');}
+ if(a.tmin<=0&&grass){hints.push('Freezing, down to '+Math.round(a.tmin)+'C. A frozen grass pitch is a no go. Ask the host club about a pitch inspection.');lvl=2;}
+ else if(a.tmin<=2){hints.push('Cold, near freezing. Gloves, snoods and a proper warm up.'+(grass?' Check the pitch is not hard or frosty.':''));lvl=Math.max(lvl,1);}
+ if(a.tmax>=25){hints.push('Hot, up to '+Math.round(a.tmax)+'C. Water breaks, shade for subs and no long runs.');lvl=Math.max(lvl,1);}
+ if(!hints.length)hints.push('Looks fine. Normal kit.');
+ var say=lvl===2?'Think about calling it off':lvl===1?'Keep an eye on it':'Good to go';
+ var adv=lvl===2?'My advice: do not wait until the car park. Ring the other manager or the host club in the morning, agree a pitch inspection or a postponement, and tell the league. Safety first.':lvl===1?'Check again the night before and on the morning. Have a plan B if the pitch is poor.':'';
+ return {lvl:lvl,say:say,adv:adv,hints:hints};}
+function wxMeet(t,mins){var m=String(t||'').match(/(\d{1,2}):(\d{2})/);if(!m)return '';var x=(+m[1])*60+(+m[2])-mins;if(x<0)x+=1440;return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');}
+function wxEvent(ev){
+ var h='<div class="card"><h3 style="margin-top:0">'+esc(ev.label)+'</h3><p class="small"><b>'+niceDate(ev.date)+'</b>'+(ev.time?', '+esc(ev.time):', time to confirm')+(ev.venue?'<br>'+esc(ev.venue):'')+'</p>';
+ if(!ev.pc){return h+'<p class="small muted">Add a postcode on the fixture (Match tab) and I will show the forecast and a route here.</p></div>';}
+ wxLoad(ev.pc,true);
+ var a=wxWin(ev.pc,ev.date,ev.time,ev.hrs);
+ if(a==='wait')h+='<p class="small muted">Getting the forecast</p>';
+ else if(a==='bad')h+='<p class="small muted">Could not get the forecast just now. Try again in a minute.</p>';
+ else if(a==='far')h+='<p class="small muted">Too far ahead for a forecast. It appears about two weeks before.</p>';
+ else{var adv=wxAdvice(a,ev.grass);var col=adv.lvl===2?'#ff8a80':adv.lvl===1?'#FFB81C':'#7ee2a0';
+  h+='<p style="margin:8px 0"><span class="pill" style="border-color:'+col+';color:'+col+'">'+esc(adv.say)+'</span></p>'+
+   '<p class="small"><b>'+Math.round(a.tmin)+(Math.round(a.tmax)!==Math.round(a.tmin)?' to '+Math.round(a.tmax):'')+'C</b>, rain chance '+a.p+'%, wind up to '+Math.round(a.w)+' mph (gusts '+Math.round(a.g)+')</p>'+
+   '<ul class="small" style="margin:6px 0 6px 18px;padding:0">'+adv.hints.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'+(adv.adv?'<p class="small">'+esc(adv.adv)+'</p>':'');}
+ var by=wxMeet(ev.time,ev.early);
+ h+=(by?'<p class="small"><b>Coaches there by '+by+'</b> to set up and meet the other manager.</p>':'')+
+  '<div class="row"><a class="btn sm pur" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(ev.dest||ev.pc)+'">Route and live traffic</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(ev.dest||ev.pc)+'">Open in Maps</a></div>'+
+  '<p class="small muted" style="margin-top:6px">Forecast from Open-Meteo, for the kick off window. Traffic is live in Google Maps, so open it when you set off.</p></div>';
+ return h;}
+function wxCard(){
+ var td=isoToday(),out='';
+ var ms=Object.keys(S.matches).map(function(k){return S.matches[k];}).filter(function(m){return !m.deleted&&!m.pp&&m.status==='plan'&&m.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;});
+ var nm=ms[0];
+ if(nm){var v=nm.vi||{};var venue=nm.venue||'';var g=!/3g|4g|astro|artificial/i.test((v.tp||'')+' '+venue);
+  var home=nm.ha!=='A';var pc=v.pc||(home?'WN5 8HU':'');
+  out+=wxEvent({label:'Next match: '+(nm.ha==='A'?'at ':'v ')+(nm.opp||'opponent')+(nm.pp?' (postponed)':''),date:nm.date,time:nm.ko,hrs:2,venue:venue||(home?'Orrell St James ARLFC, Bankes Avenue':''),pc:pc,dest:(pc+' '+venue).trim(),grass:g,early:45});}
+ var ps=(S.settings.posts||[]).filter(function(x){return x.type==='training'&&x.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;})[0];
+ if(ps)out+=wxEvent({label:'Next training',date:ps.date,time:ps.time||'19:00',hrs:1,venue:ps.place||'Wigan Robin Park 4G',pc:'WN5 0UH',dest:'WN5 0UH Robin Park',grass:false,early:30});
+ return '<h2 style="margin:6px 0">Weather and travel</h2>'+(out||'<div class="card"><p class="small muted">Nothing in the diary yet.</p></div>');}
 function news(){return S.settings.news||(S.settings.news=[]);}
 function vHub(){
  loadHub();loadPhotos();var h=view.hub,s=S.settings;
- var o=intro('Your control room: what families see on Home, events, lifts, media to approve, contacts, phone alerts and pictures.')+'<h2 style="margin:6px 0">Hub</h2><p class="small muted">What families see on their home page, plus events, lifts and phone alerts.</p>';
+ var o=intro('Your control room: what families see on Home, events, lifts, media to approve, contacts, phone alerts and pictures.')+wxCard()+'<h2 style="margin:6px 0">Hub</h2><p class="small muted">What families see on their home page, plus events, lifts and phone alerts.</p>';
  o+='<div class="card"><h3>Welcome message</h3><textarea data-hub="welcome" placeholder="A short hello for the top of the family page">'+esc(s.welcome||'')+'</textarea><p class="small muted">Shows at the top of every family and player home page.</p>';
  o+='<h4 style="margin:14px 0 4px">News and reminders</h4>'+news().filter(function(n){return !n.gone;}).map(function(n){return '<div class="it" style="cursor:default"><div class="grow small">'+esc(n.t)+'<div class="muted">'+esc(n.d||'')+'</div></div><button class="btn sm bad" data-act="newsDel" data-id="'+n.id+'">Remove</button></div>';}).join('')+'<div class="row" style="margin-top:8px"><input id="newst" class="grow" placeholder="For example: Christmas do, Friday 18 December, 7pm"><input id="newsd" type="date" style="width:150px"></div><button class="btn block" style="margin-top:8px" data-act="newsAdd">Add to home page</button></div>';
  o+='<div class="card"><h3>Events</h3><p class="small muted">Anything that is not a game or training. Parents can add events too. They wait here for you to approve.</p>';
