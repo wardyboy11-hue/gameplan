@@ -103,12 +103,37 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;t
 #splash p b{color:#FFB81C}
 .av{width:34px;height:34px;min-width:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;background:#1d2a5a}.av.big{width:84px;height:84px;min-width:84px}.tagpp{background:#7a3b00;color:#ffd9a8}.ff{display:flex;gap:8px;flex-wrap:wrap}
 .intro{background:#0A173A;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13px;color:var(--muted)}.intro a{color:#9db8ff}.mth{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-top:6px;background:#050D24}
+:root{--kit-purple:#3B1F7E;--kit-lav:#CFC8F0;--r-m:14px;--ring:0 0 0 3px rgba(255,184,28,.6)}
+body{position:relative;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.kitband{position:absolute;left:0;right:0;top:10px;height:120px;z-index:0;pointer-events:none;opacity:.5;background:var(--kit-purple) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='74' height='120'%3E%3Crect width='74' height='120' fill='%233B1F7E'/%3E%3Cpolygon fill='%23CFC8F0' points='30,0 46,0 46,38 51,44 46,50 46,120 30,120 30,56 24,50 30,44'/%3E%3C/svg%3E") repeat-x 0 0/74px 120px;-webkit-mask-image:linear-gradient(#000 10%,transparent 100%);mask-image:linear-gradient(#000 10%,transparent 100%)}
+#root{position:relative;z-index:1}
+.card{box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 10px 26px rgba(0,0,0,.28)}
+h2{letter-spacing:-.01em}
+.btn{transition:transform .08s ease,background .15s ease;-webkit-tap-highlight-color:transparent}.btn:active{transform:scale(.98)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:none;box-shadow:var(--ring)}
+.today,.kcard{position:relative;overflow:hidden;padding-top:20px}
+.today::before,.kcard::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;background:repeating-linear-gradient(90deg,var(--kit-purple) 0 15px,#fff 15px 21px)}
+nav.tabs{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+nav.tabs button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;padding:9px 2px 8px}
+nav.tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.md{border:2px solid var(--amber)}.mdbig{font-size:30px;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums}
+.vi{background:#0A173A;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:15px}.vi b{color:var(--amber)}
+@media (prefers-reduced-motion:reduce){.btn{transition:none}}
+body.ps{--bg:#FFFFFF;--card:#F2F3F9;--card2:#E2E6F3;--line:#6B7699;--ink:#0A0F24;--muted:#2F3860;--purple:#3B1F7E;--purple2:#3B1F7E;--good:#0F7A3B;--bad:#B3172F}
+body.ps .kitband{opacity:.18}
+body.ps nav.tabs{background:rgba(255,255,255,.96);border-top:2px solid #6B7699}
+body.ps input,body.ps select,body.ps textarea,body.ps .chip,body.ps .seg button{background:#fff;color:#0A0F24}
+body.ps .seg button.on,body.ps .chip.on{background:#3B1F7E;color:#fff}
+body.ps .btn{color:#0A0F24;border-width:2px}body.ps .btn.pri{color:#1b1200}body.ps a.btn{color:#0A0F24}
+body.ps .clock,body.ps .mdbig{color:#8A5A00}
+body.ps header h1,body.ps h2{color:#0A0F24}
+body.ps .vi,body.ps .intro,body.ps .ans,body.ps details.pl{background:#fff;color:#0A0F24;border-color:#6B7699}body.ps .tag{color:#fff}
 </style>
 </head>
 <body>
 <div id="splash"><div class="spw"><svg viewBox="0 0 240 240" id="sprays"></svg><img src="badge.png" alt=""></div><p>Welcome to <b>Wigan Junior Latics Blues U15</b> Touchline Hub</p></div>
 <script>(function(){var s=document.getElementById("sprays"),h="";for(var i=0;i<24;i++){var a=i*15*Math.PI/180,x1=120+Math.sin(a)*76,y1=120-Math.cos(a)*76,x2=120+Math.sin(a)*108,y2=120-Math.cos(a)*108;h+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" style="animation-delay:'+(i*2/24).toFixed(2)+'s"/>';}s.innerHTML=h;window.__sp0=Date.now();window.splashDone=function(){var e=document.getElementById("splash");if(!e||e.__d)return;e.__d=1;setTimeout(function(){e.classList.add("off");setTimeout(function(){if(e.parentNode)e.parentNode.removeChild(e);},600);},Math.max(0,1500-(Date.now()-window.__sp0)));};setTimeout(window.splashDone,9000);})();</script>
-<div class="stripe"></div>
+<div class="stripe"></div><div class="kitband" aria-hidden="true"></div>
 <div class="wrap" id="root"></div>
 <div class="sheet" id="sheet"><div class="sheetin" id="sheetin"></div></div>
 <div id="pr"></div><div class="toast" id="toast"></div>
@@ -226,13 +251,14 @@ function sync(manual){
 function paintStatus(){var el=$('#st');if(!el)return;var n=Object.keys(S.dirty).length;var txt=syncing?'Syncing':(!online?'Offline':(n?n+' to sync':lastMsg||'Ready'));el.textContent=txt;el.className='pill '+(syncing?'':(!online||n?'warn':'ok'));}
 
 /* ---------- views ---------- */
-function header(){return '<header><img src="'+BADGE+'" alt=""><h1>Touchline</h1><span class="sp"></span><button class="pill" id="st" data-act="sync"></button></header>';}
+function header(){return '<header><img src="'+BADGE+'" alt=""><h1>Touchline</h1><span class="sp"></span><button class="pill" data-act="ps" aria-label="Sunlight mode">Sun</button><button class="pill" id="st" data-act="sync"></button></header>';}
 var GRP={today:['today'],match:['match'],team:['squad','stats','admin'],train:['plan','att','board'],comms:['hub','ask','more']};
 var GNAME={squad:'Squad',stats:'Stats',admin:'Welfare',plan:'Plan',att:'Attendance',board:'Board',hub:'Hub',ask:'Ask',more:'More'};
 function grpOf(t){for(var g in GRP)if(GRP[g].indexOf(t)>-1)return g;return 'today';}
-function tabs(){var T=[['today','Today'],['match','Match'],['squad','Team'],['plan','Train'],['hub','Comms']];var cg=grpOf(view.tab);return '<nav class="tabs">'+T.map(function(t){var on=!view.mid&&grpOf(t[0])===cg;return '<button aria-label="'+t[1]+'" class="'+(on?'on':'')+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';}
+function ico(n){var P={home:'<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/>',ball:'<circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 5h-5L8 10z"/>',img:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 9"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5 7-5s7 1.5 7 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 5 1.5 5 4"/>',clip:'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/>',chat:'<path d="M4 5h16v11H9l-5 4z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(P[n]||'')+'</svg>';}
+function tabs(){var T=[['today','Today','clock'],['match','Match','ball'],['squad','Team','users'],['plan','Train','clip'],['hub','Comms','chat']];var cg=grpOf(view.tab);return '<nav class="tabs" aria-label="Main">'+T.map(function(t){var on=!view.mid&&grpOf(t[0])===cg;return '<button aria-label="'+t[1]+'" class="'+(on?'on':'')+'" data-act="tab" data-v="'+t[0]+'">'+ico(t[2])+'<span>'+t[1]+'</span></button>';}).join('')+'</nav>';}
 function subnav(){var g=grpOf(view.tab),L=GRP[g];if(L.length<2)return '';return '<div class="seg" style="margin:6px 0 10px">'+L.map(function(t){return '<button class="'+(view.tab===t?'on':'')+'" data-act="tab" data-v="'+t+'">'+GNAME[t]+'</button>';}).join('')+'</div>';}
-function render(keepScroll){
+function render(keepScroll){try{document.body.classList.toggle('ps',localStorage.getItem('tl.ps')==='1');}catch(e){}
  var r=$('#root'),y=window.scrollY;
  if(!CODE){r.innerHTML=vLogin();return;}
  var body;
@@ -278,7 +304,7 @@ function vPlan(m){
  h+='<label>Venue address or postcode</label><input data-f="addr" value="'+esc(m.addr)+'" placeholder="Used for the Google Maps link">';
  if(mapLink)h+='<p><a class="btn sm pur" href="'+mapLink+'" target="_blank" rel="noopener">Open in Google Maps</a></p>';
  h+='<div class="row"><div class="grow"><label>Half length (minutes)</label><input type="number" min="10" max="45" data-f="half" value="'+esc(m.half)+'"></div><div class="grow">'+formSel(m)+'</div></div></div>';
- h+='<div class="card"><h3>Postponed?</h3><div class="row"><div class="grow"><select data-f="pp"><option value=""'+(m.pp?'':' selected')+'>On as planned</option><option value="1"'+(m.pp?' selected':'')+'>Postponed</option></select></div></div><label>Note for families</label><input data-f="ppnote" value="'+esc(m.ppnote||'')+'" placeholder="For example: pitch waterlogged, new date to follow"></div>';
+ h+=viCard(m);h+='<div class="card"><h3>Postponed?</h3><div class="row"><div class="grow"><select data-f="pp"><option value=""'+(m.pp?'':' selected')+'>On as planned</option><option value="1"'+(m.pp?' selected':'')+'>Postponed</option></select></div></div><label>Note for families</label><input data-f="ppnote" value="'+esc(m.ppnote||'')+'" placeholder="For example: pitch waterlogged, new date to follow"></div>';
  h+='<div class="card"><h3>Who is available ('+inCount+' of '+avail.length+')</h3><div class="chips">'+avail.map(function(p){var on=m.avail[p.id]!==false;return '<button class="chip'+(on?' on':'')+'" data-act="avail" data-id="'+p.id+'">'+esc(p.num||'')+' '+esc(shortName(p))+'</button>';}).join('')+'</div></div>';
  var mp=m.postId?posts().filter(function(x){return x.id===m.postId;})[0]:null;
  h+='<div class="card"><h3>Ask the families</h3>'+(mp&&mp.status==='published'?'<p class="small" style="color:var(--good)">Posted. Families can answer now.</p><div class="row wrap2"><button class="btn grow" data-act="matchAns">Pull in answers</button><button class="btn grow" data-act="matchUnpost">Take it down</button></div>'+ansCard(m.postId):'<p class="small muted">Posts the date, kick off and place, with a Yes, No or Maybe button for each family.</p><button class="btn pri block" data-act="matchPost">Post this match to families</button>')+'</div>';
@@ -841,13 +867,31 @@ window.viewLink=show;
 document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a||a.dataset.ext)return;var h=a.getAttribute('href')||'';if(!/^https?:/i.test(h))return;if(show(h))e.preventDefault();},true);
 })();
 
+function meetBy(ko){var m=String(ko||'').match(/(\d{1,2}):(\d{2})/);if(!m)return '';var t=(+m[1])*60+(+m[2])-30;if(t<0)t+=1440;return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');}
+function destC(m){var v=m.vi;var base=m.addr||m.venue||'';return (v&&v.pc)?(v.pc+' '+base).trim():base;}
+function waC(t){if(navigator.share){navigator.share({text:t}).catch(function(){});}else{window.open('https://wa.me/?text='+encodeURIComponent(t));}}
+function mdCard(m){var d=new Date(),mm=String(m.ko||'').match(/(\d{1,2}):(\d{2})/),left='';if(mm){var k=new Date(d.getFullYear(),d.getMonth(),d.getDate(),+mm[1],+mm[2]),mins=Math.round((k-d)/60000);left=mins>0?('Kick off in '+(mins>=60?Math.floor(mins/60)+'h ':'')+(mins%60)+'m'):(mins>-100?'Game time':'Full time soon');}
+ var v=m.vi,q=destC(m),op=m.ha==='A'?'at '+m.opp:'v '+m.opp;
+ var h='<div class="card kcard md"><span class="tag" style="background:#FFB81C;color:#1b1200">Match day</span><h2 style="margin-top:8px">'+esc(op)+'</h2><div class="mdbig">'+esc(left||m.ko)+'</div><p>Kick off <b>'+esc(m.ko)+'</b>'+(meetBy(m.ko)?'. Players there by <b>'+meetBy(m.ko)+'</b>.':'')+'</p>';
+ if(v&&(v.pc||v.pk||v.tp))h+='<div class="vi">'+(v.pc?'<div>Postcode: <b>'+esc(v.pc)+'</b></div>':'')+(v.pk?'<div>Parking: '+esc(v.pk)+'</div>':'')+(v.tp?'<div>Good to know: '+esc(v.tp)+'</div>':'')+'</div>';
+ h+='<div class="row"><button class="btn pri" data-act="openMatch" data-id="'+m.id+'">Open match</button>'+(q?'<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(q)+'">Directions</a>':'')+'</div>';
+ if(q)h+='<div class="row"><a class="btn" target="_blank" rel="noopener" href="https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes">Waze</a><a class="btn" target="_blank" rel="noopener" href="https://one.network/" data-ext="1">Roadworks</a></div>';
+ h+='<h3>Tell the parents</h3><div class="row wrap2"><button class="btn sm" data-act="tell" data-k="late">Running late</button><button class="btn sm" data-act="tell" data-k="change">Time or pitch change</button><button class="btn sm" data-act="tell" data-k="cancel">Postponed</button></div><p class="small muted">Opens WhatsApp with the message ready. Pick the group and send.</p></div>';return h;}
+function viCard(m){var v=m.vi||{};return '<div class="card"><h3>Venue tips for families</h3><p class="small muted">Shows on the family page for this game. Sat nav postcode, where to park, anything useful.</p><label style="margin-top:0">Sat nav postcode</label><input data-vi="pc" value="'+esc(v.pc||'')+'" maxlength="12" placeholder="WN5 0UE"><label>Parking</label><input data-vi="pk" value="'+esc(v.pk||'')+'" maxlength="200" placeholder="On site car park"><label>Good to know</label><input data-vi="tp" value="'+esc(v.tp||'')+'" maxlength="240" placeholder="3G pitch, no metal studs"><button class="btn block" style="margin-top:10px" data-act="viAll">Use for every game at this ground</button></div>';}
+Object.assign(ACT,{
+ tell:function(d){var m=Object.keys(S.matches).map(function(k){return S.matches[k];}).filter(function(x){return !x.deleted&&x.status==='plan'&&x.date>=isoToday();}).sort(function(a,b){return a.date<b.date?-1:1;})[0];var o=m?(m.ha==='A'?'at ':'v ')+m.opp:'today';var T={late:'Latics U15 Blues '+o+': we are running a few minutes late. We will update you as soon as we know more. Tim.',change:'Latics U15 Blues '+o+': there is a change to the time or pitch. Please check the family page for details.',cancel:'Latics U15 Blues '+o+': the game is postponed. We will post the new date on the family page.'};waC(T[d.k]||'');},
+ viAll:function(){var m=cur();if(!m||!m.vi){toast('Add a tip first');return;}var key=String(m.addr||m.venue||'').trim().toLowerCase();if(!key){toast('Add the venue name first');return;}var n=0;Object.keys(S.matches).forEach(function(k){var o=S.matches[k];if(!o.deleted&&String(o.addr||o.venue||'').trim().toLowerCase()===key){o.vi=JSON.parse(JSON.stringify(m.vi));touch('match',o);n++;}});toast('Saved for '+n+' game'+(n===1?'':'s'));},
+ ps:function(){var on=localStorage.getItem('tl.ps')==='1';try{localStorage.setItem('tl.ps',on?'0':'1');}catch(e){}render(true);}
+});
+document.addEventListener('change',function(e){var t=e.target,m=cur();if(m&&t.dataset&&t.dataset.vi){m.vi=m.vi||{};m.vi[t.dataset.vi]=t.value.trim();saveM(m);}});
+
 var CHK=['Team sheet done and shared','Balls (ten size five) and bibs','Cones, first aid kit and ice pack','Water for every player','Kit bag labels checked','Referee and opposition contact confirmed','Lifts sorted for away games','FA Full Time result to enter after'];
 function chkState(){var d={};try{d=JSON.parse(localStorage.getItem('tl.chk'))||{};}catch(e){}if(d.d!==isoToday())d={d:isoToday()};return d;}
 function vToday(){
  loadHub();var td=isoToday(),h='<div class="row" style="margin:6px 0"><h2 class="grow" style="margin:0">Today</h2></div><p class="small muted">'+niceDate(td)+'</p>';
  var ms=Object.keys(S.matches).map(function(k){return S.matches[k];}).filter(function(m){return !m.deleted&&m.status==='plan'&&m.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;});
  var nm=ms[0];
- if(nm){h+='<div class="card" style="border-color:var(--amber)"><h3 style="margin-top:0">Next match</h3><h2>'+(nm.ha==='A'?'at ':'v ')+esc(nm.opp)+(nm.pp?' (postponed)':'')+'</h2><p><b>'+niceDate(nm.date)+'</b>, '+esc(nm.ko)+(nm.venue?'<br>'+esc(nm.venue):'')+'</p><div class="row"><button class="btn pri" data-act="openMatch" data-id="'+nm.id+'">Open match</button>'+((nm.addr||nm.venue)?'<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(nm.addr||nm.venue)+'">Directions</a>':'')+'</div></div>';}
+ if(nm&&nm.date===td){h+=mdCard(nm);}else if(nm){h+='<div class="card kcard"><h3 style="margin-top:0">Next match</h3><h2>'+(nm.ha==='A'?'at ':'v ')+esc(nm.opp)+(nm.pp?' (postponed)':'')+'</h2><p><b>'+niceDate(nm.date)+'</b>, '+esc(nm.ko)+(nm.venue?'<br>'+esc(nm.venue):'')+'</p><div class="row"><button class="btn pri" data-act="openMatch" data-id="'+nm.id+'">Open match</button>'+((nm.addr||nm.venue)?'<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(nm.addr||nm.venue)+'">Directions</a>':'')+'</div></div>';}
  else h+='<div class="card"><h3 style="margin-top:0">Next match</h3><p class="muted">No match in the diary.</p></div>';
  var ps=(S.settings.posts||[]).filter(function(x){return x.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;})[0];
  if(ps)h+='<div class="card"><h3 style="margin-top:0">Next on the family page</h3><h2>'+esc(ps.title)+'</h2><p><b>'+niceDate(ps.date)+'</b>'+(ps.time?', '+esc(ps.time):'')+'</p><button class="btn block" data-act="tab" data-v="plan">Open plan</button></div>';
