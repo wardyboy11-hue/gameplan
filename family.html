@@ -50,6 +50,7 @@ details.pl{background:var(--card);border:1px solid var(--line);border-radius:14p
 select.pl{width:100%;min-height:48px;background:#0A173A;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
 .chk{display:flex;gap:10px;align-items:center;min-height:48px}.chk input{width:26px;min-height:26px;height:26px}
 @media (prefers-reduced-motion:reduce){.spw line{animation:none;opacity:1}#splash{transition:none}*{scroll-behavior:auto!important}}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#0A173A;color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -213,8 +214,42 @@ function resetCard(){return '<h3>Reset</h3><p>Use it when something goes wrong a
 function routine(){var k=['Eat well, plenty of water','Kit and boots packed','One thing I want to do today'],done={};try{done=JSON.parse(g('fam.rt'))||{};}catch(e){}if(done.d!==today())done={d:today()};
  return '<h3>Before the game</h3>'+k.map(function(t,i){return '<label class="chk"><input type="checkbox" '+(done['k'+i]?'checked ':'')+'onchange="rtTick('+i+',this.checked)"> '+t+'</label>';}).join('');}
 function rtTick(i,v){var d={};try{d=JSON.parse(g('fam.rt'))||{};}catch(e){}if(d.d!==today())d={d:today()};d['k'+i]=v;s('fam.rt',JSON.stringify(d));}
+
+var BRAIN=[
+['Wing back','The ball is on the far side of the pitch. You are the wing back on the near side. Where do you stand?',['Stay high on the touchline','Tuck in towards the middle, ready to go wide if it switches','Drop right back to the defenders'],1,'Tuck in so the team stays tight, then be ready to burst wide when the ball switches. Tight when it is far, wide when it comes to you.'],
+['Centre back','Their striker drops short to get the ball with his back to goal. What do you do?',['Step out tight and win it, with your partner covering behind','Drop off to keep the line','Stay where you are and wait'],0,'Step out only if someone covers behind you. Shout cover so everyone knows. If nobody covers, hold your ground and make him turn the hard way.'],
+['Midfield','The ball is on its way to you and a defender is close. When do you look around?',['After the ball arrives','Before the ball arrives, then again','At the ball the whole time'],1,'Look before it gets to you. Shoulder check, then you know your first touch before the ball lands. Good players look more often.'],
+['Goalkeeper','You have the ball and their striker is coming to press. What now?',['Kick it as far as you can','Find the free centre back and play it','Hold it for as long as you can'],1,'Find the free player. If nobody is free, play it long and wide, away from the press. The aim is a pass that helps, not a kick that wins nothing.'],
+['Everyone','We have just lost the ball. What happens next?',['Everyone drops back at once','The nearest players press straight away and the rest squeeze up','We wait and see'],1,'The first three seconds after losing it are the best time to win it back. Nearest two press hard, everyone else squeezes up behind them.'],
+['Striker','Your strike partner drops short to get the ball. What is your job?',['Drop short as well','Run in behind the defence','Stand still'],1,'Opposite jobs. One comes short, one goes long. If you both drop, there is no space. If you both run, there is no link.'],
+['Everyone','The ref gives a decision against us and you think it is wrong. What helps the team most?',['Tell the ref what you think','Take one breath and get ready for the next ball','Shout at a teammate'],1,'The next ball matters more than the last decision. Breathe in for four, out for six, then pick your next job. That is how good players reset.'],
+['Everyone','A teammate gives the ball away and they score. What do you say?',['That was your fault','Next one, I have got you','Nothing, just look away'],1,'He already feels bad. One kind word gets him back in the game. Teams that support each other make fewer mistakes the next time.'],
+['Centre back','You are the right sided centre back of three. We have the ball and there is a big space in front of you. What do you do?',['Carry the ball forward into the space','Stay where you are','Run into the box'],0,'In a back three, the wide centre back can carry the ball into space. Look up, check who is behind you, and take the space the other team is giving you.'],
+['Wing back','You get the ball wide in their half. Two teammates are running into the box. What do you do?',['Cross it straight away','Look up, then cross it to the space between the keeper and defenders','Dribble back'],1,'Look up first. A cross with a plan beats a cross with hope. Pick the space, not just the player.'],
+['Everyone','We are winning 1 0 with five minutes left. What do we do?',['Kick it as far as we can','Keep the ball, move it, and stay calm','Everyone goes forward'],1,'Keep the ball and make them chase it. Short passes, good positions and no panic. Time passes quickest when we have the ball.'],
+['Everyone','You feel nervous before kick off. What helps?',['Keep it all inside','Slow breathing and one job for the first ten minutes','Tell yourself you will be rubbish'],1,'Nerves mean you care. Breathe slowly, then give yourself one job, like talk loudly or press first. A small job takes the worry away.']];
+function bwk(){return Math.floor(Date.now()/604800000);}
+function brainSt(){var d={};try{d=JSON.parse(g('fam.brain'))||{};}catch(e){}d.o=d.o||0;d.a=d.a||{};return d;}
+var plOpen={};function plO(k){return ' ontoggle="plOpen.'+k+'=this.open"'+(plOpen[k]?' open':'');}
+function brainBox(){var d=brainSt(),i=(bwk()+d.o)%BRAIN.length,q=BRAIN[i],a=d.a[i];
+ var h='<p class="small muted">A new question every week. No scores. Nobody else sees your answers.</p><p><span class="tag">'+esc(q[0])+'</span></p><p>'+esc(q[1])+'</p>';
+ q[2].forEach(function(o,k){var on=a===k;h+='<button class="btn block" style="margin:6px 0;justify-content:flex-start;text-align:left;'+(on?'border-color:#FFB81C;':'')+'" onclick="brainPick('+i+','+k+')">'+esc(o)+'</button>';});
+ if(a!==undefined)h+='<div class="intro" style="margin-top:10px;font-size:15px"><p><b>Coach says:</b> '+esc(q[4])+'</p><p>The answer most coaches would pick: <b>'+esc(q[2][q[3]])+'</b></p></div>';
+ h+='<button class="btn block" style="margin-top:8px" onclick="brainNext()">Try another question</button>';return h;}
+function brainPick(i,k){var d=brainSt();d.a[i]=k;s('fam.brain',JSON.stringify(d));r();}
+function brainNext(){var d=brainSt();d.o=(d.o+1)%BRAIN.length;s('fam.brain',JSON.stringify(d));r();}
+var WELL=['Passing','Pressing','Talking','Energy','Staying calm','Teamwork','My first touch'];
+function reflSt(){var d=[];try{d=JSON.parse(g('fam.refl'))||[];}catch(e){}return d;}
+function reflBox(){var L=reflSt(),cur=L[0]&&L[0].d===today()?L[0]:{d:today(),w:'',t:''};
+ function chips(k){return '<div class="chips" style="margin:6px 0">'+WELL.map(function(w){return '<button class="chip" style="min-height:44px;'+(cur[k]===w?'background:#1d3fb5;border-color:#FFB81C':'')+'" onclick="reflSet(\''+k+'\',\''+w+'\')">'+w+'</button>';}).join('')+'</div>';}
+ var h='<p class="small muted">Two taps after a game. Stays on your phone. Nobody else can see it, not even Tim or Deano.</p><h3>What went well</h3>'+chips('w')+'<h3>What I will try next</h3>'+chips('t');
+ var past=L.filter(function(x){return x.d!==today()&&(x.w||x.t);}).slice(0,3);
+ if(past.length)h+='<h3>Before</h3>'+past.map(function(x){return '<p class="small">'+esc(nice(x.d))+': went well, '+esc(x.w||'not picked')+'. Try next, '+esc(x.t||'not picked')+'.</p>';}).join('');
+ return h;}
+function reflSet(k,v){var L=reflSt();if(!(L[0]&&L[0].d===today()))L.unshift({d:today(),w:'',t:''});L[0][k]=L[0][k]===v?'':v;s('fam.refl',JSON.stringify(L.slice(0,12)));r();}
+
 function playerBox(){if(D.role!=='player')return '';var rl=myRole(),opts='<option value="">Pick your position</option>'+Object.keys(ROLES).map(function(k){return '<option'+(k===rl?' selected':'')+'>'+k+'</option>';}).join('');
- return '<details class="pl"><summary>My job in the 352</summary><p class="small muted">Pick the position you are playing. This stays on your phone.</p><select class="pl" aria-label="My position" onchange="setRole(this.value)">'+opts+'</select>'+(rl?'<p style="margin-top:10px">'+ROLES[rl].map(function(t){return '&bull; '+esc(t);}).join('<br>')+'</p>':'')+'</details><details class="pl"><summary>Game day</summary>'+routine()+resetCard()+'<p class="small muted">Need to talk to someone? Tim, Deano or Childline on 0800 1111.</p></details>';}
+ return '<details class="pl"'+plO('job')+'><summary>My job in the 352</summary><p class="small muted">Pick the position you are playing. This stays on your phone.</p><select class="pl" aria-label="My position" onchange="setRole(this.value)">'+opts+'</select>'+(rl?'<p style="margin-top:10px">'+ROLES[rl].map(function(t){return '&bull; '+esc(t);}).join('<br>')+'</p>':'')+'</details><details class="pl"'+plO('brain')+'><summary>Football brain</summary>'+brainBox()+'</details><details class="pl"'+plO('after')+'><summary>After the game</summary>'+reflBox()+'</details><details class="pl"'+plO('day')+'><summary>Game day</summary>'+routine()+resetCard()+'<p class="small muted">Need to talk to someone? Tim, Deano or Childline on 0800 1111.</p></details>';}
 function r(){var el=document.getElementById('root'),h='<header><img src="coach/badge.png" alt=""><h1>Wigan Junior Latics U15 Blues</h1></header>'+updLine();
  if(!CODE||!D){h+='<div class="card"><h2>Family page</h2><p class="muted">Type the code Tim sent you. Parents have a family code and players have their own player code.</p><input id="code" placeholder="ABC 123" autocapitalize="characters" autocomplete="off"><div class="err" id="err">'+esc(msg)+'</div><button class="btn pri block" onclick="login()">Open</button></div><p class="small muted">Need a code? Ask Tim at training.</p><p class="small"><a href="#" onclick="showPriv=!showPriv;r();return false">Privacy</a></p>'+(showPriv?'<div class="card">'+PRIV+'</div>':'');el.innerHTML=h;return;}
  if(g(OK)!=='1'){h+='<div class="card">'+PRIV+'<button class="btn pri block" style="margin-top:14px" onclick="s(OK,\'1\');r()">I have read this and I am happy to carry on</button></div>';el.innerHTML=h;return;}
