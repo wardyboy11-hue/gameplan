@@ -85,6 +85,7 @@ body.ps .vi,body.ps .intro,body.ps .ans,body.ps details.pl{background:#fff;color
 <div class="wrap" id="root"></div>
 <script>
 var API=window.TL_API||'https://script.google.com/macros/s/AKfycby3YUAg5QncW-hb2tKDapu108F2RDlgEhFmluVsXPctKdlLP33ADPbVcJ8kEJSLmoij/exec';
+try{if(/[?&]fresh=1/.test(location.search)){['fam.code','fam.ok1','fam.cache','fam.push'].forEach(function(k){localStorage.removeItem(k);});history.replaceState(null,'',location.pathname);}}catch(e){}
 var CK='fam.code',OK='fam.ok1',CODE=g(CK),D=null,askA='',askBusy=false,showPriv=false,showHelp=false,msg='';
 function g(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
 function s(k,v){try{localStorage.setItem(k,v);}catch(e){}}
