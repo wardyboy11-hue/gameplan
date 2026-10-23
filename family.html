@@ -235,6 +235,19 @@ function login(){var v=document.getElementById('code').value.trim();if(!v)return
 function ans(id,a){D.mine[id]=a;r();call('f.answer',{postId:id,answer:a}).catch(function(e){alert(e.message);load();});}
 function ask(){var q=document.getElementById('q').value.trim();if(q.length<3)return;askBusy=true;askA='';r();document.getElementById('q').value=q;call('f.ask',{q:q}).then(function(d){askA=d.text;askBusy=false;r();}).catch(function(e){askA=e.message;askBusy=false;r();});}
 window.addEventListener('online',function(){load();});window.addEventListener('offline',function(){r();});
+(function(){
+function yt(u){var m=u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([\w-]{11})/);return m?'https://www.youtube-nocookie.com/embed/'+m[1]+'?rel=0&playsinline=1':null;}
+function vm(u){var m=u.match(/vimeo\.com\/(?:video\/)?(\d+)/);return m?'https://player.vimeo.com/video/'+m[1]:null;}
+function esc2(t){return String(t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function show(url){var emb=yt(url)||vm(url),img=/\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);if(!emb&&!img)return false;
+ var d=document.createElement('div');d.id='lnkview';d.setAttribute('role','dialog');d.setAttribute('aria-label','Viewer');
+ d.style.cssText='position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column';
+ d.innerHTML='<div style="display:flex;gap:8px;padding:8px;background:#111"><button id="lvx" style="min-height:48px;flex:1;font:inherit;font-weight:700;border-radius:12px;border:1px solid #444;background:#222;color:#fff">Close</button><a href="'+esc2(url)+'" target="_blank" rel="noopener" data-ext="1" style="min-height:48px;flex:1;display:flex;align-items:center;justify-content:center;font-weight:700;border-radius:12px;border:1px solid #444;color:#fff;text-decoration:none">Open in browser</a></div><div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:auto">'+(emb?'<iframe src="'+esc2(emb)+'" style="width:100%;aspect-ratio:16/9;border:0;max-height:100%" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" title="Video"></iframe>':'<img src="'+esc2(url)+'" alt="" style="max-width:100%;max-height:100%">')+'</div>';
+ document.body.appendChild(d);document.getElementById('lvx').onclick=function(){d.remove();};return true;}
+window.viewLink=show;
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a||a.dataset.ext)return;var h=a.getAttribute('href')||'';if(!/^https?:/i.test(h))return;if(show(h))e.preventDefault();},true);
+})();
+
 function out(){CODE='';D=null;s(CK,'');s('fam.cache','');r();}
 if(CODE){var cc=null;try{cc=JSON.parse(g('fam.cache')||'null');}catch(x){}if(cc&&cc.c===CODE&&cc.d){D=cc.d;r();splashDone();}load();}else{r();splashDone();}
 </script>
