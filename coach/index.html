@@ -261,6 +261,7 @@ function subnav(){var g=grpOf(view.tab),L=GRP[g];if(L.length<2)return '';return 
 function render(keepScroll){try{document.body.classList.toggle('ps',localStorage.getItem('tl.ps')==='1');}catch(e){}
  var r=$('#root'),y=window.scrollY;
  if(!CODE){r.innerHTML=vLogin();return;}
+ loadPhotos();
  var body;
  if(view.mid&&M(view.mid)){var m=M(view.mid);body=m.status==='plan'?vPlan(m):(m.status==='done'?vDone(m):vLive(m));}
  else body=view.tab==='today'?vToday():subnav()+(view.tab==='squad'?vSquad():view.tab==='plan'?vSession():view.tab==='hub'?vHub():view.tab==='ask'?vAsk():view.tab==='stats'?vStats():view.tab==='more'?vMore():view.tab==='admin'?vAdmin():view.tab==='att'?vAtt():view.tab==='board'?vBoard():vMatches());
@@ -424,7 +425,7 @@ function av(p){var u=view.photos[p.id];return u?'<img class="av" src="'+u+'" alt
 function smallJpeg(file,cb){var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){var sz=Math.min(im.width,im.height),sx=(im.width-sz)/2,sy=(im.height-sz)/2,d=220,q=0.8,c=document.createElement('canvas');c.width=d;c.height=d;c.getContext('2d').drawImage(im,sx,sy,sz,sz,0,0,d,d);var u=c.toDataURL('image/jpeg',q);while(u.length>38000&&q>0.3){q-=0.1;u=c.toDataURL('image/jpeg',q);}cb(u);};im.src=fr.result;};fr.readAsDataURL(file);}
 function loadPhotos(force){if(!CODE||API.indexOf('https://script.google.com/macros/s/AKfycby3YUAg5QncW-hb2tKDapu108F2RDlgEhFmluVsXPctKdlLP33ADPbVcJ8kEJSLmoij/exec')>-1)return;if(!force&&now()-view.phAt<300000)return;view.phAt=now();call('photo.list').then(function(d){view.photos=d.photos||{};try{localStorage.setItem('tl.photos',JSON.stringify(view.photos));}catch(e){}render(true);}).catch(function(){});}
 function waShare(t){if(navigator.share){navigator.share({text:t}).catch(function(){});}else{window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');}}
-function coachPhotoBox(id,label){var u=view.photos[id];return '<div class="row" style="align-items:center;margin:8px 0"><'+(u?'img class="av big" src="'+u+'"':'span class="av big" style="display:inline-block"')+'>'+(u?'':'</span>')+'<div class="grow" style="margin-left:12px"><b>'+label+'</b><br><label class="btn sm" style="display:inline-block;margin-top:6px">Choose picture<input type="file" accept="image/*" data-upl="'+id+'" style="display:none"></label></div></div>';}
+function coachPhotoBox(id,label){var u=view.photos[id];return '<div class="row" style="align-items:center;margin:8px 0"><'+(u?'img class="av big" src="'+u+'"':'span class="av big" style="display:inline-block"')+'>'+(u?'':'</span>')+'<div class="grow" style="margin-left:12px"><b>'+label+'</b><br><label class="btn sm" style="display:inline-block;margin-top:6px">Choose picture<input type="file" accept="image/*" data-upl="'+id+'" style="display:none"></label>'+(u?' <button class="btn sm ghost" data-act="rmPhoto" data-id="'+id+'" style="margin-top:6px">Remove picture</button>':'')+'</div></div>';}
 
 /* ---------- hub ---------- */
 function calUrl(){return API+'?cal='+encodeURIComponent(CODE);}
@@ -757,6 +758,7 @@ var ACT={
  delMatchX:function(){},
  newPlayer:function(){playerSheet('');},
  editPlayer:function(d){playerSheet(d.id);},
+ rmPhoto:function(d){call('photo.del',{playerId:d.id}).then(function(){delete view.photos[d.id];try{localStorage.setItem('tl.photos',JSON.stringify(view.photos));}catch(x){}toast('Picture removed');render(true);if(view.sheet&&view.sheet.id===d.id)playerSheet(d.id);}).catch(function(er){toast(er.message);});},
  togPos:function(d){var a=view.sheet.pos,i=a.indexOf(d.v);if(i>-1)a.splice(i,1);else a.push(d.v);paintChips();},
  savePlayer:function(){var name=$('#pname').value.trim();if(!name){toast('Add a name');return;}var id=view.sheet.id,p=id?P(id):{id:uid(),active:true};p.num=$('#pn').value;p.name=name;p.pos=view.sheet.pos.slice();p.notes=$('#pnotes').value;p.obj=$('#pobj').value.trim().slice(0,400);p.objOn=$('#pobjon').value==='1';p.fan=$('#pfan').value.trim();p.dob=$('#pdob').value;p.cap=$('#pcap').value;p.honours=$('#phon').value.trim().slice(0,300);S.players[p.id]=p;touch('player',p);closeSheet();render(true);},
  archivePlayer:function(){var p=P(view.sheet.id);p.active=p.active===false;touch('player',p);closeSheet();render(true);}
