@@ -465,9 +465,10 @@ function wxAdvice(a,grass){var hints=[],lvl=0;
  var say=lvl===2?'Think about calling it off':lvl===1?'Keep an eye on it':'Good to go';
  var adv=lvl===2?'My advice: do not wait until the car park. Ring the other manager or the host club in the morning, agree a pitch inspection or a postponement, and tell the league. Safety first.':lvl===1?'Check again the night before and on the morning. Have a plan B if the pitch is poor.':'';
  return {lvl:lvl,say:say,adv:adv,hints:hints};}
+function isoPlus(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function wxMeet(t,mins){var m=String(t||'').match(/(\d{1,2}):(\d{2})/);if(!m)return '';var x=(+m[1])*60+(+m[2])-mins;if(x<0)x+=1440;return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');}
 function wxEvent(ev){
- var h='<div class="card"><h3 style="margin-top:0">'+esc(ev.label)+'</h3><p class="small"><b>'+niceDate(ev.date)+'</b>'+(ev.time?', '+esc(ev.time):', time to confirm')+(ev.venue?'<br>'+esc(ev.venue):'')+'</p>';
+ var h='<div class="card"><h3 style="margin-top:0">'+esc(ev.label)+'</h3><p class="small"><b>'+niceDate(ev.date)+'</b>'+(ev.time?', '+esc(ev.time)+(ev.tbc?' (FA default, confirmed the week of the game)':''):', time to confirm')+(ev.venue?'<br>'+esc(ev.venue):'')+'</p>';
  if(!ev.pc){return h+'<p class="small muted">Add a postcode on the fixture (Match tab) and I will show the forecast and a route here.</p></div>';}
  wxLoad(ev.pc,true);
  var a=wxWin(ev.pc,ev.date,ev.time,ev.hrs);
@@ -489,9 +490,9 @@ function wxCard(){
  var nm=ms[0];
  if(nm){var v=nm.vi||{};var venue=nm.venue||'';var g=!/3g|4g|astro|artificial/i.test((v.tp||'')+' '+venue);
   var home=nm.ha!=='A';var pc=v.pc||(home?'WN5 8HU':'');
-  out+=wxEvent({label:'Next match: '+(nm.ha==='A'?'at ':'v ')+(nm.opp||'opponent')+(nm.pp?' (postponed)':''),date:nm.date,time:nm.ko,hrs:2,venue:venue||(home?'Orrell St James ARLFC, Bankes Avenue':''),pc:pc,dest:(pc+' '+venue).trim(),grass:g,early:45});}
+  out+=wxEvent({label:'Next match: '+(nm.ha==='A'?'at ':'v ')+(nm.opp||'opponent')+(nm.pp?' (postponed)':''),date:nm.date,time:nm.ko,tbc:(nm.date>isoPlus(7)),hrs:2,venue:venue||(home?'Orrell St James ARLFC, Bankes Avenue':''),pc:pc,dest:(pc+' '+venue).trim(),grass:g,early:45});}
  var ps=(S.settings.posts||[]).filter(function(x){return x.type==='training'&&x.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;})[0];
- if(ps)out+=wxEvent({label:'Next training',date:ps.date,time:ps.time||'19:00',hrs:1,venue:ps.place||'Wigan Robin Park 4G',pc:'WN5 0UH',dest:'WN5 0UH Robin Park',grass:false,early:30});
+ if(ps)out+=wxEvent({label:'Next training',date:ps.date,time:ps.time||'20:00',hrs:1,venue:ps.place||"St Peter's High School, Orrell (half astro)",pc:'WN5 8NU',dest:"St Peter's Catholic High School, Howards Lane, Orrell WN5 8NU",grass:false,early:30});
  return '<h2 style="margin:6px 0">Weather and travel</h2>'+(out||'<div class="card"><p class="small muted">Nothing in the diary yet.</p></div>');}
 function news(){return S.settings.news||(S.settings.news=[]);}
 function vHub(){
@@ -523,12 +524,12 @@ function evRow(e){return '<div class="it" style="cursor:default"><div class="gro
 var FOCUS=['Build up and keeping the ball','Pressing and winning it back','Defending as a unit','Transitions','Finishing','Wide play and crossing','Set pieces','1v1 attacking and defending','First touch and receiving','Goalkeeping','Movement and fitness','Team spirit and mindset'];
 var CORNERS=['Technical','Tactical','Physical','Psychological','Social'];
 function nextWed(){var d=new Date();var add=(3-d.getDay()+7)%7;d.setDate(d.getDate()+add);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function planDraft(){var p=S.settings.plan;if(!p){p=S.settings.plan={focus:[],corner:[],date:nextWed(),num:String(plist().length||''),pitch:'One third of a 4G pitch, about 35 yards by the full width',equip:'10 size 5 balls, 10 size 4 balls, cones, mats, bibs in red, orange and yellow',ctx:''};}if(!p.date||p.date<isoToday())p.date=nextWed();if(!p.post||p.post.forDate!==p.date)p.post={id:null,forDate:p.date,title:'',why:'',bring:'Boots, shin pads, a water bottle and a coat',time:'19:00',place:'',status:'draft'};if(!Array.isArray(p.corner))p.corner=[];return p;}
+function planDraft(){var p=S.settings.plan;if(!p){p=S.settings.plan={focus:[],corner:[],date:nextWed(),num:String(plist().length||''),pitch:'One third of a 4G pitch, about 35 yards by the full width',equip:'10 size 5 balls, 10 size 4 balls, cones, mats, bibs in red, orange and yellow',ctx:''};}if(!p.date||p.date<isoToday())p.date=nextWed();if(!p.post||p.post.forDate!==p.date)p.post={id:null,forDate:p.date,title:'',why:'',bring:'Boots, shin pads, a water bottle and a coat',time:'20:00',place:"St Peter's High School, Orrell (half astro)",status:'draft'};if(!Array.isArray(p.corner))p.corner=[];return p;}
 function lastDone(){var a=Object.keys(S.matches).map(function(k){return S.matches[k];}).filter(function(m){return m.status==='done'&&!m.deleted;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});return a[0];}
 function buildBrief(){
  var p=planDraft(),L=[];
  L.push('SESSION PLAN REQUEST: Wigan Junior Latics U15 Blues');
- L.push('Date: '+niceDate(p.date)+', 19:00 to 20:00 (60 minutes including setup and review)');
+ L.push('Date: '+niceDate(p.date)+', 20:00 to 21:00 (60 minutes including setup and review)');
  L.push('Players expected: '+(p.num||'not set')+' (one goalkeeper)');
  L.push('Focus: '+(p.focus.length?p.focus.join('; '):'coach to suggest'));
  if(p.corner.length)L.push('FA four corners emphasis: '+p.corner.join(', '));
@@ -641,7 +642,7 @@ function ideaSheet(id){
 function paintTags(){var el=$('#itags');if(!el)return;var a=view.sheet.tags;el.innerHTML=FOCUS.map(function(f){return '<button class="chip'+(a.indexOf(f)>-1?' on':'')+'" data-act="ideaTag" data-v="'+esc(f)+'">'+esc(f)+'</button>';}).join('');}
 function ideasPrompt(){
  var p=planDraft(),pk=ideas().filter(function(i){return view.pick&&view.pick[i.id];}),L=[];
- L.push('Build ONE session for Wednesday '+niceDate(p.date)+', 19:00 to 20:00, from the ideas below. Combine them into the project format: arrival activity, practice one, practice two (main theme), the game, review. Keep the best of each idea, drop or adapt what does not fit 60 minutes and one third of a 4G pitch, and say what you dropped and why. Give Deano a named practice to lead. Credit who suggested each idea and name any outside source.');
+ L.push('Build ONE session for Wednesday '+niceDate(p.date)+', 20:00 to 21:00, from the ideas below. Combine them into the project format: arrival activity, practice one, practice two (main theme), the game, review. Keep the best of each idea, drop or adapt what does not fit 60 minutes and one third of a 4G pitch, and say what you dropped and why. Give Deano a named practice to lead. Credit who suggested each idea and name any outside source.');
  L.push('Players expected: '+(p.num||'about 14')+'. Focus: '+(p.focus.join('; ')||'coach to suggest')+'.');
  if(p.ctx&&p.ctx.trim())L.push('Coach context: '+p.ctx.trim());
  L.push('');pk.forEach(function(i,n){L.push('Idea '+(n+1)+' from '+(i.by||'a coach')+': '+i.title+(i.link?' ('+i.link+')':'')+(i.notes?'. Notes: '+i.notes:'')+(i.tags&&i.tags.length?'. Theme: '+i.tags.join(', '):''));});
