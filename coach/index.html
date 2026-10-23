@@ -155,7 +155,7 @@ function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&s.players)
 function lsGet(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 var S=load(),CODE=lsGet(CKEY),syncing=false,online=true,lastMsg='',syncTimer=null;
-var view={askq:'',askA:'',askBusy:false,answers:[],codes:null,log:null,tab:'match',mid:lsGet('tl.mid')||null,sheet:null,brief:null,hub:{ev:[],lifts:[],at:0},photos:(function(){try{return JSON.parse(localStorage.getItem('tl.photos'))||{};}catch(e){return {};}})(),phAt:0};
+var view={askq:'',askA:'',askBusy:false,answers:[],codes:null,log:null,tab:'today',mid:lsGet('tl.mid')||null,sheet:null,brief:null,hub:{ev:[],lifts:[],at:0},photos:(function(){try{return JSON.parse(localStorage.getItem('tl.photos'))||{};}catch(e){return {};}})(),phAt:0};
 if(view.mid&&!(S.matches[view.mid]&&!S.matches[view.mid].deleted))view.mid=null;
 function setMid(v){view.mid=v;lsSet('tl.mid',v||'');}
 var sel={off:null,on:null,mode:'sub'};
@@ -227,13 +227,17 @@ function paintStatus(){var el=$('#st');if(!el)return;var n=Object.keys(S.dirty).
 
 /* ---------- views ---------- */
 function header(){return '<header><img src="'+BADGE+'" alt=""><h1>Touchline</h1><span class="sp"></span><button class="pill" id="st" data-act="sync"></button></header>';}
-function tabs(){var T=[['match','Match'],['squad','Squad'],['plan','Plan'],['hub','Hub'],['ask','Ask'],['stats','Stats'],['more','More']];return '<nav class="tabs">'+T.map(function(t){return '<button class="'+(view.tab===t[0]&&!view.mid?'on':'')+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';}
+var GRP={today:['today'],match:['match'],team:['squad','stats','admin'],train:['plan','att'],comms:['hub','ask','more']};
+var GNAME={squad:'Squad',stats:'Stats',admin:'Welfare',plan:'Plan',att:'Attendance',hub:'Hub',ask:'Ask',more:'More'};
+function grpOf(t){for(var g in GRP)if(GRP[g].indexOf(t)>-1)return g;return 'today';}
+function tabs(){var T=[['today','Today'],['match','Match'],['squad','Team'],['plan','Train'],['hub','Comms']];var cg=grpOf(view.tab);return '<nav class="tabs">'+T.map(function(t){var on=!view.mid&&grpOf(t[0])===cg;return '<button aria-label="'+t[1]+'" class="'+(on?'on':'')+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';}
+function subnav(){var g=grpOf(view.tab),L=GRP[g];if(L.length<2)return '';return '<div class="seg" style="margin:6px 0 10px">'+L.map(function(t){return '<button class="'+(view.tab===t?'on':'')+'" data-act="tab" data-v="'+t+'">'+GNAME[t]+'</button>';}).join('')+'</div>';}
 function render(keepScroll){
  var r=$('#root'),y=window.scrollY;
  if(!CODE){r.innerHTML=vLogin();return;}
  var body;
  if(view.mid&&M(view.mid)){var m=M(view.mid);body=m.status==='plan'?vPlan(m):(m.status==='done'?vDone(m):vLive(m));}
- else body=view.tab==='squad'?vSquad():view.tab==='plan'?vSession():view.tab==='hub'?vHub():view.tab==='ask'?vAsk():view.tab==='stats'?vStats():view.tab==='more'?vMore():vMatches();
+ else body=view.tab==='today'?vToday():subnav()+(view.tab==='squad'?vSquad():view.tab==='plan'?vSession():view.tab==='hub'?vHub():view.tab==='ask'?vAsk():view.tab==='stats'?vStats():view.tab==='more'?vMore():view.tab==='admin'?vAdmin():view.tab==='att'?vAtt():vMatches());
  r.innerHTML=header()+body+tabs();paintStatus();if(keepScroll)window.scrollTo(0,y);
 }
 function vLogin(){return '<div class="login"><img src="'+BADGE+'" alt="Wigan Junior Latics"><h1 style="margin:14px 0 4px">Touchline</h1><p class="muted">Coaches only. Enter your code.</p><div class="card"><input id="code" type="password" autocomplete="off" placeholder="Coach code" style="text-align:center"><button class="btn pri block" style="margin-top:12px" data-act="login">Open</button><p class="small muted" id="lerr"></p></div></div>';}
@@ -729,6 +733,49 @@ var ACT={
  savePlayer:function(){var name=$('#pname').value.trim();if(!name){toast('Add a name');return;}var id=view.sheet.id,p=id?P(id):{id:uid(),active:true};p.num=$('#pn').value;p.name=name;p.pos=view.sheet.pos.slice();p.notes=$('#pnotes').value;p.obj=$('#pobj').value.trim().slice(0,400);p.objOn=$('#pobjon').value==='1';p.fan=$('#pfan').value.trim();p.dob=$('#pdob').value;p.cap=$('#pcap').value;p.honours=$('#phon').value.trim().slice(0,300);S.players[p.id]=p;touch('player',p);closeSheet();render(true);},
  archivePlayer:function(){var p=P(view.sheet.id);p.active=p.active===false;touch('player',p);closeSheet();render(true);}
 };
+
+var CHK=['Team sheet done and shared','Balls (ten size five) and bibs','Cones, first aid kit and ice pack','Water for every player','Kit bag labels checked','Referee and opposition contact confirmed','Lifts sorted for away games','FA Full Time result to enter after'];
+function chkState(){var d={};try{d=JSON.parse(localStorage.getItem('tl.chk'))||{};}catch(e){}if(d.d!==isoToday())d={d:isoToday()};return d;}
+function vToday(){
+ loadHub();var td=isoToday(),h='<div class="row" style="margin:6px 0"><h2 class="grow" style="margin:0">Today</h2></div><p class="small muted">'+niceDate(td)+'</p>';
+ var ms=Object.keys(S.matches).map(function(k){return S.matches[k];}).filter(function(m){return !m.deleted&&m.status==='plan'&&m.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;});
+ var nm=ms[0];
+ if(nm){h+='<div class="card" style="border-color:var(--amber)"><h3 style="margin-top:0">Next match</h3><h2>'+(nm.ha==='A'?'at ':'v ')+esc(nm.opp)+(nm.pp?' (postponed)':'')+'</h2><p><b>'+niceDate(nm.date)+'</b>, '+esc(nm.ko)+(nm.venue?'<br>'+esc(nm.venue):'')+'</p><div class="row"><button class="btn pri" data-act="openMatch" data-id="'+nm.id+'">Open match</button>'+((nm.addr||nm.venue)?'<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(nm.addr||nm.venue)+'">Directions</a>':'')+'</div></div>';}
+ else h+='<div class="card"><h3 style="margin-top:0">Next match</h3><p class="muted">No match in the diary.</p></div>';
+ var ps=(S.settings.posts||[]).filter(function(x){return x.date>=td;}).sort(function(a,b){return a.date<b.date?-1:1;})[0];
+ if(ps)h+='<div class="card"><h3 style="margin-top:0">Next on the family page</h3><h2>'+esc(ps.title)+'</h2><p><b>'+niceDate(ps.date)+'</b>'+(ps.time?', '+esc(ps.time):'')+'</p><button class="btn block" data-act="tab" data-v="plan">Open plan</button></div>';
+ var hb=view.hub||{},pe=(hb.ev||[]).filter(function(e){return e.status==='pending';}).length,pm=(hb.media||[]).filter(function(e){return e.status==='pending';}).length,ol=(hb.lifts||[]).length;
+ h+='<div class="card"><h3 style="margin-top:0">Needs you</h3>'+((pe+pm)?'<p>'+(pe?pe+' event'+(pe>1?'s':'')+' to check. ':'')+(pm?pm+' media item'+(pm>1?'s':'')+' to check.':'')+'</p>':'<p class="muted">Nothing waiting.</p>')+'<p class="small muted">'+ol+' lift note'+(ol===1?'':'s')+' from families.</p><button class="btn block" data-act="tab" data-v="hub">Open Comms</button></div>';
+ var d=chkState();
+ h+='<div class="card"><h3 style="margin-top:0">Match day checklist</h3><p class="small muted">Resets each day. Stays on this phone.</p>'+CHK.map(function(t,i){return '<label class="chk" style="display:flex;gap:10px;align-items:center;min-height:48px"><input type="checkbox" style="width:26px;height:26px;min-height:26px" data-chk="'+i+'"'+(d['k'+i]?' checked':'')+'> '+esc(t)+'</label>';}).join('')+'</div>';
+ var cp=(S.settings.comp||[]).filter(function(c){return c.exp&&c.exp<=addDays(td,60);});
+ if(cp.length)h+='<div class="card" style="border-color:#FB7185"><h3 style="margin-top:0">Coming up for renewal</h3>'+cp.map(function(c){return '<p>'+esc(c.n)+': '+esc(c.what)+', '+(c.exp<td?'expired ':'ends ')+niceDate(c.exp)+'</p>';}).join('')+'<button class="btn block" data-act="tab" data-v="admin">Welfare and admin</button></div>';
+ var pn=S.settings.pain||{},pl=plist().filter(function(p){return pn[p.id]&&pn[p.id]>=addDays(td,-7);});
+ if(pl.length)h+='<div class="card" style="border-color:var(--amber)"><h3 style="margin-top:0">Load watch</h3><p>'+pl.map(function(p){return esc(shortName(p));}).join(', ')+': cut jumping and repeated sprinting this week.</p></div>';
+ return h;}
+function addDays(iso,n){var p=iso.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function vAdmin(){
+ var td=isoToday(),s=S.settings,h='<h2 style="margin:6px 0">Welfare and admin</h2><p class="small muted">Coach only. Families and players never see this page.</p>';
+ var pn=s.pain||{};
+ h+='<div class="card"><h3 style="margin-top:0">Growth pain watch</h3><p class="small muted">A note only, not a diagnosis. If a player reports knee, heel or lower back pain, tap his name. Today shows a load watch reminder for seven days: cut jumping and repeated sprinting for him.</p><div class="chips">'+plist().map(function(p){var on=pn[p.id]&&pn[p.id]>=addDays(td,-7);return '<button class="chip'+(on?' on':'')+'" data-act="painTog" data-id="'+p.id+'">'+esc(shortName(p))+'</button>';}).join('')+'</div></div>';
+ var cs=(s.comp||[]).slice().sort(function(a,b){return (a.exp||'9')<(b.exp||'9')?-1:1;});
+ h+='<div class="card"><h3 style="margin-top:0">Coach compliance dates</h3><p class="small muted">DBS, safeguarding course, first aid and licence expiry for you and Deano.</p>'+(cs.length?cs.map(function(c){var late=c.exp&&c.exp<td,soon=c.exp&&!late&&c.exp<=addDays(td,60);return '<div class="it"><div class="grow"><b>'+esc(c.n)+'</b><div class="small muted">'+esc(c.what)+(c.exp?' · '+(late?'expired ':'ends ')+niceDate(c.exp):'')+'</div></div>'+(late?'<span class="tag" style="background:#7f1d33">Expired</span>':soon?'<span class="tag" style="background:#6b4a0a">Soon</span>':'')+'<button class="btn" data-act="compDel" data-id="'+c.id+'">Remove</button></div>';}).join(''):'<p class="muted">None added yet.</p>')+'<label>Who</label><select id="cmn"><option>Tim</option><option>Deano</option></select><label>What</label><select id="cmw"><option>DBS</option><option>Safeguarding course</option><option>First aid</option><option>FA coaching licence</option><option>Other</option></select><label>Ends on</label><input id="cmd" type="date"><button class="btn pri block" style="margin-top:10px" data-act="compAdd">Add date</button></div>';
+ var nf=plist().filter(function(p){return !p.fan;});
+ h+='<div class="card"><h3 style="margin-top:0">Registration check</h3>'+(nf.length?'<p>No FAN number on file for: '+nf.map(function(p){return esc(shortName(p));}).join(', ')+'.</p>':'<p>Every player has a FAN number on file.</p>')+'<p class="small muted">Add a FAN number from the player profile in Squad.</p></div>';
+ return h;}
+function vAtt(){
+ var s=S.settings,dt=view.attDate||isoToday(),a=(s.att||{})[dt]||{},pl=plist();
+ var h='<h2 style="margin:6px 0">Attendance</h2><p class="small muted">Coach only. Use it with the training review for selection evidence, never as a ranking.</p><div class="card"><label style="margin-top:0">Session date</label><input type="date" id="attd" value="'+dt+'"><h3>Who was there ('+Object.keys(a).length+' of '+pl.length+')</h3><div class="chips">'+pl.map(function(p){return '<button class="chip'+(a[p.id]?' on':'')+'" data-act="attTog" data-id="'+p.id+'">'+esc(shortName(p))+'</button>';}).join('')+'</div></div>';
+ var all=s.att||{},ds=Object.keys(all).sort().slice(-10);
+ if(ds.length){h+='<div class="card"><h3 style="margin-top:0">Last '+ds.length+' sessions</h3>'+pl.map(function(p){var n=ds.filter(function(d){return all[d][p.id];}).length;return '<div class="it"><div class="grow">'+esc(shortName(p))+'</div><b>'+n+' of '+ds.length+'</b></div>';}).join('')+'</div>';}
+ return h;}
+Object.assign(ACT,{
+ painTog:function(d){var s=S.settings,pn=s.pain=s.pain||{},td=isoToday();if(pn[d.id]&&pn[d.id]>=addDays(td,-7))delete pn[d.id];else pn[d.id]=td;touch('settings',s);sync();render(true);},
+ compAdd:function(){var e=$('#cmd').value;if(!e){toast('Pick the end date');return;}var s=S.settings;(s.comp=s.comp||[]).push({id:uid(),n:$('#cmn').value,what:$('#cmw').value,exp:e});touch('settings',s);sync();render(true);toast('Added');},
+ compDel:function(d){var s=S.settings;s.comp=(s.comp||[]).filter(function(c){return c.id!==d.id;});touch('settings',s);sync();render(true);},
+ attTog:function(d){var s=S.settings,at=s.att=s.att||{},dt=view.attDate||isoToday(),a=at[dt]=at[dt]||{};if(a[d.id])delete a[d.id];else a[d.id]=1;if(!Object.keys(a).length)delete at[dt];var ks=Object.keys(at).sort();while(ks.length>40)delete at[ks.shift()];touch('settings',s);sync();render(true);}
+});
+document.addEventListener('change',function(e){var t=e.target;if(t.id==='attd'){view.attDate=t.value||null;render(true);}if(t.dataset&&t.dataset.chk!==undefined){var d=chkState();d['k'+t.dataset.chk]=t.checked;try{localStorage.setItem('tl.chk',JSON.stringify(d));}catch(x){}}});
 document.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(!b)return;if(b.tagName==='A')return;var f=ACT[b.dataset.act];if(f){e.preventDefault();f(b.dataset,b);}});
 document.getElementById('sheet').addEventListener('click',function(e){if(e.target.id==='sheet')closeSheet();});
 document.addEventListener('change',function(e){var t=e.target,m=cur();
