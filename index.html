@@ -1,26 +1,42 @@
 <!doctype html>
-<html lang="en-GB">
+<html lang="en-GB" style="background:#000">
 <head>
 <meta charset="utf-8">
 <title>Game Plan</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#060A12">
+<meta name="theme-color" content="#000">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Game Plan">
 <style>
-html,body{margin:0;height:100%;background:#060A12}
-iframe{border:0;width:100%;height:100%;display:block}
+html,body{margin:0;height:100%;background:#000}
+iframe{border:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .35s ease;position:relative;z-index:2}
+iframe.on{opacity:1}
+#wr{position:fixed;inset:0;width:100%;height:100%;z-index:1;background:#000}
 #off{display:none;font-family:Verdana,Arial,sans-serif;color:#060A12;padding:24px}
 </style>
 </head>
 <body>
 <!-- Replace the address below with your Apps Script web app URL (ends in /exec) -->
+<canvas id="wr" aria-hidden="true"></canvas>
 <iframe id="app" title="Game Plan" src="https://script.google.com/macros/s/AKfycbzP1PB48zdAabVhK8EHmaODCs5SYS44pOSlzQJ9-mtugQ3cyjgCJnOUnGXmAauiScDD/exec" allow="clipboard-write; camera; microphone"></iframe>
 <div id="off">No signal. Game Plan needs the internet. Try again when you are back online.</div>
 <script>
+/* tiny rain while the app loads, then hand over to the app when it says it is ready */
+(function(){
+var cv=document.getElementById('wr'),f=document.getElementById('app'),ctx=cv.getContext('2d'),fs=16,cols=[],W,H,raf,last=0,done=false;
+var G='ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ0123456789Z:.=*+<>';
+var calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function size(){var d=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);cols=[];for(var i=0;i<Math.ceil(W/fs);i++)cols.push(Math.random()*-H/fs);}
+function draw(t){raf=requestAnimationFrame(draw);if(document.hidden||t-last<32)return;last=t;ctx.fillStyle='rgba(0,0,0,.09)';ctx.fillRect(0,0,W,H);ctx.font=fs+'px monospace';
+ for(var i=0;i<cols.length;i++){var y=cols[i]*fs;ctx.fillStyle='#0a8a3a';ctx.fillText(G[(Math.random()*G.length)|0],i*fs,y-fs);ctx.fillStyle='#eafff1';ctx.fillText(G[(Math.random()*G.length)|0],i*fs,y);cols[i]+=.5+(i%5)*.15;if(y>H&&Math.random()>.97)cols[i]=0;}}
+function reveal(){if(done)return;done=true;f.classList.add('on');setTimeout(function(){cancelAnimationFrame(raf);cv.style.display='none';},400);}
+size();addEventListener('resize',size);if(!calm)raf=requestAnimationFrame(draw);
+addEventListener('message',function(e){if(e.data&&e.data.gp==='ready')reveal();});
+setTimeout(reveal,8000);
+})();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 window.addEventListener('offline',function(){document.getElementById('app').style.display='none';document.getElementById('off').style.display='block';});
 window.addEventListener('online',function(){location.reload();});
