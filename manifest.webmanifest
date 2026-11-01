@@ -1,11 +1,14 @@
 {
   "name": "Game Plan",
   "short_name": "Game Plan",
+  "id": "./",
   "start_url": "./",
+  "description": "Rohan's study game plan",
   "scope": "./",
-  "display": "fullscreen",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "display": "standalone",
+  "display_override": ["fullscreen","standalone"],
+  "background_color": "#060A12",
+  "theme_color": "#060A12",
   "icons": [
     {
       "src": "icon-192.png",
